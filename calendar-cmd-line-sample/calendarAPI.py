@@ -185,10 +185,10 @@ class person:
     connect()
     --connects to the google calendar api
   """
-  def __init__(self, userName):
+  def __init__(self, userName,argv):
     assert userName
     self.service = None
-    self.connect()
+    self.connect(argv)
     self.blockedTimes = []
     self.availabilities = {'date':None,'times':[]}
     self.userName = userName
@@ -287,7 +287,14 @@ class person:
       return False
     return True
 
-  def connect(self):
+  def connect(self,argv):
+    parser = argparse.ArgumentParser(
+      description=__doc__,
+      formatter_class=argparse.RawDescriptionHelpFormatter,
+      parents=[tools.argparser])
+
+    flags = parser.parse_args(argv[1:])
+
     CLIENT_SECRETS = os.path.join(os.path.dirname(__file__), 'client_secrets.json')
     FLOW = client.flow_from_clientsecrets(CLIENT_SECRETS,
       scope=[
@@ -298,7 +305,7 @@ class person:
     storage = file.Storage('credentials.dat')
     credentials = storage.get()
     if credentials is None or credentials.invalid:
-      credentials = tools.run_flow(FLOW, storage, None)
+      credentials = tools.run_flow(FLOW, storage, flags)
 
     # Create an httplib2.Http object to handle our HTTP requests and authorize it
     # with our good Credentials.
@@ -309,7 +316,7 @@ class person:
     self.service = discovery.build('calendar', 'v3', http=http)
 
 def main(argv):
-  user = person("burrows.danny@gmail.com")
+  user = person("burrows.danny@gmail.com",argv)
   user.findAvailbility("04/10/2014 08:30", "04/10/2014 15:00")
   user.listAvailabilities()  
  
