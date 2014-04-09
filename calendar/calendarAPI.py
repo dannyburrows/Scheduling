@@ -224,17 +224,17 @@ class person:
           self.availabilities['times'].append(i)
           i = i + 15
     if not self.availabilities['times']:
-      self.availabilities['times'].append("All")
+      i = start
+      while i <= end:
+        self.availabilities['times'].append(i)
+        i = i + 15
 
   def listAvailabilities(self):
     try:
       assert (self.availabilities['date'] != None)
       print self.availabilities['date'], self.userName
-      if self.availabilities['times'][0] == 'All':
-        print "All"
-      else:
-        for i in self.availabilities['times']:
-          print self._displayTime(i)
+      for i in self.availabilities['times']:
+        print self._displayTime(i)
     except:
       print "Error in printing availabilities"
 

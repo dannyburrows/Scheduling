@@ -1,6 +1,6 @@
 #README
 
-Scheduler
+#Scheduler
 
 ##A break down of the project
 ####Scrape OSU Catalog
