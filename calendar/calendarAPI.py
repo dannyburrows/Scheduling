@@ -146,7 +146,8 @@ class person:
 
     A class instance that tracks the username of a person as well as a list of times that they are not available
 
-    addBlockedTime(start, end)
+    _addBlockedTime(start, end)
+    --helper function for _generateBlocks()
     --takes in start and end as unicoded time objects, creates a new unavailTime object and appends to internal array that tracks all unavailable time slots
     --performs a self check to ensure that start, end and length are all properly set before appending
 
@@ -167,6 +168,9 @@ class person:
     --helper function for findAvailbility
     --returns year, date, mins of a passed in string
 
+    _displayTime(milTime)
+    --helper function for listAvailabilities
+    --displays time in either military time or not
     
     _generateBlocks(service)
     --creates an array of blocked times by looping through the calendar object
@@ -184,7 +188,7 @@ class person:
     self._generateBlocks(self.service)
 
   # Add new blocked out time
-  def addBlockedTime(self, start, end):
+  def _addBlockedTime(self, start, end):
     newBlock = unavailTime()
     newBlock.setStart(start)
     newBlock.setEnd(end)
@@ -197,8 +201,14 @@ class person:
     return self.userName
 
   # Display a list of availabilities
-  def findAvailbility(self, startTime, endTime):
-    timeFrame = 15 # how often do we want to check
+  def findAvailability(self, startTime, endTime):
+    try:
+      # restriction of the time frame for checking to 15 minute increments
+      assert self.meetingLength >= 15
+    except:
+      return False
+
+    timeFrame = 15 # how often do we want to check times
     startYear, startDate, start = self._getCorrectedTime(startTime)
     endYear, endDate, end = self._getCorrectedTime(endTime)
     self.availabilities['date'] = startTime[0:10]
@@ -206,6 +216,8 @@ class person:
       # start with full availabilitiy
       self.availabilities['times'].append(i)
 
+    # loop through blocked times, times that user has an event scheduled
+    # and remove times that are unavailble
     for cur in self.blockedTimes:
       eventDay,eventYear = cur.getNumericalDate(0)
       # the calendar days match up, now find what times are available
@@ -215,26 +227,29 @@ class person:
         eventStart = cur.getMinuteOfDay(0)
         eventEnd = cur.getMinuteOfDay(1)
 
-        # remove times that would cause a conflict based on the length of the meeting
-        i = start
-        while i < end:
-          if (i + self.meetingLength) > eventStart and (i + self.meetingLength) < eventEnd:
-            if i in self.availabilities['times']:
-              self.availabilities['times'].remove(i)
-          i = i + timeFrame
-       
-        # removes the times that an event is taking place
-        j = eventStart
-        while j < eventEnd:
-          if j in self.availabilities['times']:
+        # removes times before an event, based on length of the event
+        j = eventEnd - timeFrame # ensures we include the time at the end of the event
+        while j > (eventStart - self.meetingLength):
+          try:#if j in self.availabilities['times']:
             self.availabilities['times'].remove(j)
-          j = j + timeFrame
+          except:
+            pass
+          j = j - 15
+    return True
 
-  # used in debugging
-  def _printTime(self, input, militaryTime):
+  def listAvailabilities(self, milTime):
+    try:
+      assert (self.availabilities['date'] != None)
+      print self.availabilities['date'], self.userName
+      for i in self.availabilities['times']:
+        print self._displayTime(i, milTime)
+    except:
+      print "Error in printing availabilities"
+
+  def _displayTime(self, input, milTime):
     midDay = ""
     hours = input / 60
-    if not militaryTime:
+    if not milTime:
       midDay = "AM"
       if hours >= 12:
         if hours >= 13:
@@ -242,21 +257,6 @@ class person:
         midDay = "PM"
     mins = input % 60
     time = "%02d:%02d " % (hours, mins) + midDay
-    print time      
-
-  def listAvailabilities(self):
-    try:
-      assert (self.availabilities['date'] != None)
-      print self.availabilities['date'], self.userName
-      for i in self.availabilities['times']:
-        print self._displayTime(i)
-    except:
-      print "Error in printing availabilities"
-
-  def _displayTime(self, input):
-    hours = input / 60
-    mins = input % 60
-    time = "%02d:%02d" % (hours, mins)
     return time
 
   def _getCorrectedTime(self, input):
@@ -271,7 +271,6 @@ class person:
   def _generateBlocks(self, service):
     # loop through calendar for this specific user and add blocked times as they are pulled from api
     try:
-      #print "Success! Now add code here."
       page_token = None
       
       while True:
@@ -286,7 +285,7 @@ class person:
             eventStart = event['start']['date']
             eventEnd = event['end']['date']
 
-          if not self.addBlockedTime(eventStart, eventEnd):
+          if not self._addBlockedTime(eventStart, eventEnd):
             # if for some reason adding a blocked time failed
             # we can catch it and process it here
             pass
@@ -344,11 +343,11 @@ class connection:
 def main(argv):
   service = connection(argv)
   user = person("clampitl@onid.oregonstate.edu",30,service.service)
-  user.findAvailbility("04/15/2014 07:00", "04/15/2014 21:00")
+  user.findAvailability("04/15/2014 07:00", "04/15/2014 21:00")
   user.listAvailabilities()  
   
   user = person("burrows.danny@gmail.com",30,service.service)
-  user.findAvailbility("04/15/2014 07:00", "04/15/2014 21:00")
+  user.findAvailability("04/15/2014 07:00", "04/15/2014 21:00")
   user.listAvailabilities()  
  
 if __name__ == '__main__':
