@@ -17,6 +17,7 @@ import sys
 import dateutil.parser
 import time
 
+from dateutil.tz import *
 from datetime import *
 from apiclient import discovery
 from oauth2client import file
@@ -46,10 +47,6 @@ class unavailTime:
     --returns a numerical representation of the date for comparison purposes
     --flag is a boolean, 0 for the start, 1 for the end
 
-    _cleanTime(inputTime)
-    --returns a time string formatted "mm/dd/yyyy hh:mm"
-    --strips timezone information, unsure of full result of this as of current
-    
     _updateLength()
     --checks if both end and start have been set, if so calculates and sets the length
 
@@ -112,12 +109,6 @@ class unavailTime:
     self._updateLength()
     return True
 
-  # properly formats date and time
-  def _cleanTime(self, inputTime):
-    temp = dateutil.parser.parse(inputTime)
-    temp.replace(tzinfo=None)
-    return temp.strftime("%m/%d/%y %I:%M")
-
   # sets the length if there is both a start and end time
   def _updateLength(self):
     if self.end and self.start:
@@ -148,8 +139,6 @@ class unavailTime:
       return True
     except:
       return False
-
-    #print "Start - " + str(self.start) + " End - " + str(self.end) + " Length - " + str(self.length)
 
 class person:
   """
@@ -185,10 +174,10 @@ class person:
     connect()
     --connects to the google calendar api
   """
-  def __init__(self, userName,argv):
+  def __init__(self, userName,length,service):
     assert userName
-    self.service = None
-    self.connect(argv)
+    self.service = service
+    self.meetingLength = length
     self.blockedTimes = []
     self.availabilities = {'date':None,'times':[]}
     self.userName = userName
@@ -209,25 +198,51 @@ class person:
 
   # Display a list of availabilities
   def findAvailbility(self, startTime, endTime):
+    timeFrame = 15 # how often do we want to check
     startYear, startDate, start = self._getCorrectedTime(startTime)
     endYear, endDate, end = self._getCorrectedTime(endTime)
     self.availabilities['date'] = startTime[0:10]
+    for i in range(start, end - self.meetingLength + timeFrame, timeFrame):
+      # start with full availabilitiy
+      self.availabilities['times'].append(i)
+
     for cur in self.blockedTimes:
-      i = start
       eventDay,eventYear = cur.getNumericalDate(0)
       # the calendar days match up, now find what times are available
       if startYear == eventYear and startDate == eventDay:
-        while (i <= end):
-          # there is a collision between a scheduled event for this user and the time entered
-          if cur.getMinuteOfDay(0) == i:
-            i = i + cur.getLength()
-          self.availabilities['times'].append(i)
-          i = i + 15
-    if not self.availabilities['times']:
-      i = start
-      while i <= end:
-        self.availabilities['times'].append(i)
-        i = i + 15
+        # collision between checking day and event already scheduled
+        # need to pull start and stop times of event, and remove all times between start and stop
+        eventStart = cur.getMinuteOfDay(0)
+        eventEnd = cur.getMinuteOfDay(1)
+
+        # remove times that would cause a conflict based on the length of the meeting
+        i = start
+        while i < end:
+          if (i + self.meetingLength) > eventStart and (i + self.meetingLength) < eventEnd:
+            if i in self.availabilities['times']:
+              self.availabilities['times'].remove(i)
+          i = i + timeFrame
+       
+        # removes the times that an event is taking place
+        j = eventStart
+        while j < eventEnd:
+          if j in self.availabilities['times']:
+            self.availabilities['times'].remove(j)
+          j = j + timeFrame
+
+  # used in debugging
+  def _printTime(self, input, militaryTime):
+    midDay = ""
+    hours = input / 60
+    if not militaryTime:
+      midDay = "AM"
+      if hours >= 12:
+        if hours >= 13:
+          hours = hours - 12
+        midDay = "PM"
+    mins = input % 60
+    time = "%02d:%02d " % (hours, mins) + midDay
+    print time      
 
   def listAvailabilities(self):
     try:
@@ -260,7 +275,7 @@ class person:
       page_token = None
       
       while True:
-        events = service.events().list(calendarId=self.userName , pageToken=page_token).execute()
+        events = service.events().list(calendarId=self.userName , pageToken=page_token, timeZone='-5:00').execute()
         userName = events['summary']
         for event in events['items']:
 
@@ -286,6 +301,16 @@ class person:
         "the application to re-authorize")
       return False
     return True
+
+"""
+  Connection class
+
+  Creates the FLOW object and sevice object required for interacting with the calendar's api
+"""
+class connection:
+  def __init__(self, argv = ""):
+    self.service = None
+    self.connect(argv)
 
   def connect(self,argv):
     parser = argparse.ArgumentParser(
@@ -315,9 +340,15 @@ class person:
     # Construct the service object for the interacting with the Calendar API.
     self.service = discovery.build('calendar', 'v3', http=http)
 
+
 def main(argv):
-  user = person("burrows.danny@gmail.com",argv)
-  user.findAvailbility("04/10/2014 08:30", "04/10/2014 15:00")
+  service = connection(argv)
+  user = person("clampitl@onid.oregonstate.edu",30,service.service)
+  user.findAvailbility("04/15/2014 07:00", "04/15/2014 21:00")
+  user.listAvailabilities()  
+  
+  user = person("burrows.danny@gmail.com",30,service.service)
+  user.findAvailbility("04/15/2014 07:00", "04/15/2014 21:00")
   user.listAvailabilities()  
  
 if __name__ == '__main__':
