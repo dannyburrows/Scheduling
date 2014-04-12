@@ -17,6 +17,7 @@ import sys
 import dateutil.parser
 import time
 
+from timeobject import *
 from dateutil.tz import *
 from datetime import *
 from apiclient import discovery
@@ -50,14 +51,6 @@ class unavailTime:
     _updateLength()
     --checks if both end and start have been set, if so calculates and sets the length
 
-    _getHours()
-    --helper function for _updateLength
-    --takes the input (either start or end time) and returns an int representation of the hours
-
-    _getMins()
-    --helper funciton for _updateLength
-    --takes the input (either start or end time) and returns an int representation of the mins
-
     check()
     --a few small checks for the class instance
     --if an assert fails, catches and returns false, allowing program to continue
@@ -81,21 +74,21 @@ class unavailTime:
   # flag determines whether start or end is returned
   def getMinuteOfDay(self, flag):
     if not flag:
-      mins = self._getMins(self.start)
-      hours = self._getHour(self.start)
+      mins = getMins(self.start)
+      hours = getHour(self.start)
     else:
-      mins = self._getMins(self.end)
-      hours = self._getHour(self.end)
+      mins = getMins(self.end)
+      hours = getHour(self.end)
 
     return 60 * hours + mins
 
   def getNumericalDate(self, flag):
     if not flag:
-      numDate = int(self.start.strftime("%j"))
-      numYear = int(self.start.strftime("%y"))
+      numDate = getDayOfYear(self.start)#int(self.start.strftime("%j"))
+      numYear = getYear(self.start)#int(self.start.strftime("%y"))
     else:
-      numDate = int(self.end.strftime("%j"))
-      numYear = int(self.end.strftime("%y"))
+      numDate = getDayOfYear(self.end)#int(self.end.strftime("%j"))
+      numYear = getYear(self.end)#int(self.end.strftime("%y"))
 
     return numDate,numYear
 
@@ -113,23 +106,13 @@ class unavailTime:
   def _updateLength(self):
     if self.end and self.start:
       # a VERY rough calculated of length
-      hourS = self._getHour(self.start)
-      hourE = self._getHour(self.end)
-      minsS = self._getMins(self.start)
-      minsE = self._getMins(self.end)
+      hourS = getHour(self.start)
+      hourE = getHour(self.end)
+      minsS = getMins(self.start)
+      minsE = getMins(self.end)
       self.length = 60 * (hourE - hourS) + (minsE - minsS)
       return True
     return False
-
-  # returns an integer for hour based by parsing the datetime as a string
-  # there is an easier way to do this...
-  def _getHour(self, input):
-    return int(str(input)[11:13])
-
-  # returns an integer for minutes based by parsing the datetime as a string
-  # there is an easier way to do this...
-  def _getMins(self, input):
-    return int(str(input)[14:16])
 
   def check(self):
     try:
@@ -200,18 +183,22 @@ class person:
   def getUserName(self):
     return self.userName
 
+  def clearAvail(self):
+    self.availabilities = {'date':None,'times':[]}
+    return True
+
   # Display a list of availabilities
-  def findAvailability(self, startTime, endTime):
+  def findAvailability(self, startTime, endTime, timeFrame = 15):
     try:
       # restriction of the time frame for checking to 15 minute increments
       assert self.meetingLength >= 15
+      assert timeFrame >= 15
     except:
       return False
 
-    timeFrame = 15 # how often do we want to check times
-    startYear, startDate, start = self._getCorrectedTime(startTime)
-    endYear, endDate, end = self._getCorrectedTime(endTime)
-    self.availabilities['date'] = startTime[0:10]
+    startYear, startDate, start = getCorrectedTime(startTime)
+    endYear, endDate, end = getCorrectedTime(endTime)
+    self.availabilities['date'] = getDate(startTime)
     for i in range(start, end - self.meetingLength + timeFrame, timeFrame):
       # start with full availabilitiy
       self.availabilities['times'].append(i)
@@ -242,31 +229,10 @@ class person:
       assert (self.availabilities['date'] != None)
       print self.availabilities['date'], self.userName
       for i in self.availabilities['times']:
-        print self._displayTime(i, milTime)
+        printTime(i, milTime)
+        #print self._displayTime(i, milTime)
     except:
       print "Error in printing availabilities"
-
-  def _displayTime(self, input, milTime):
-    midDay = ""
-    hours = input / 60
-    if not milTime:
-      midDay = "AM"
-      if hours >= 12:
-        if hours >= 13:
-          hours = hours - 12
-        midDay = "PM"
-    mins = input % 60
-    time = "%02d:%02d " % (hours, mins) + midDay
-    return time
-
-  def _getCorrectedTime(self, input):
-    # "04/10/2014 08:00"
-    temp = datetime.strptime(input[0:10], '%m/%d/%Y')
-    year = int(temp.strftime("%y"))
-    date = int(temp.strftime("%j"))
-    mins = int(input[11:13]) * 60 + int(input[14:16])
-    #print date,mins
-    return year,date,mins
 
   def _generateBlocks(self, service):
     # loop through calendar for this specific user and add blocked times as they are pulled from api
@@ -344,11 +310,11 @@ def main(argv):
   service = connection(argv)
   user = person("clampitl@onid.oregonstate.edu",30,service.service)
   user.findAvailability("04/15/2014 07:00", "04/15/2014 21:00")
-  user.listAvailabilities()  
+  user.listAvailabilities(False)  
   
   user = person("burrows.danny@gmail.com",30,service.service)
   user.findAvailability("04/15/2014 07:00", "04/15/2014 21:00")
-  user.listAvailabilities()  
+  user.listAvailabilities(False)  
  
 if __name__ == '__main__':
   main(sys.argv)
