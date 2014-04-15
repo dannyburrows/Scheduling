@@ -17,7 +17,7 @@ import sys
 import dateutil.parser
 import time
 
-from timeobject import *
+from timemanip import *
 from dateutil.tz import *
 from datetime import *
 from apiclient import discovery
@@ -92,13 +92,20 @@ class unavailTime:
 
     return numDate,numYear
 
-  def setStart(self, start):
-    self.start = dateutil.parser.parse(start)
+  def setStart(self, start, google = True):
+    if google:
+      self.start = dateutil.parser.parse(start)
+    else:
+      self.start = start
     self._updateLength()
     return True
 
-  def setEnd(self, end):
-    self.end = dateutil.parser.parse(end)
+  def setEnd(self, end, google = True):
+    if google:
+      self.end = dateutil.parser.parse(end)
+      self._updateLength()
+    else:
+      self.end = end
     self._updateLength()
     return True
 
@@ -127,68 +134,100 @@ class person:
   """
     person
 
-    A class instance that tracks the username of a person as well as a list of times that they are not available
-
-    _addBlockedTime(start, end)
-    --helper function for _generateBlocks()
-    --takes in start and end as unicoded time objects, creates a new unavailTime object and appends to internal array that tracks all unavailable time slots
-    --performs a self check to ensure that start, end and length are all properly set before appending
-
-    getUserName()
-    --returns user name for the current person
-
-    findAvailbility(startTime, endTime)
-    --creates a list of available times based on string passed into function
-    
-    listAvailabilities()
-    --displays a list of availabilities for this specific user, on the date that passed into the findAvailbility() function
-
-    _displayTime(input)
-    --helper function for listAvailabilities
-    --returns a string with a prettily formatted time
-
-    _getCorrectedTime(input)
-    --helper function for findAvailbility
-    --returns year, date, mins of a passed in string
-
-    _displayTime(milTime)
-    --helper function for listAvailabilities
-    --displays time in either military time or not
-    
-    _generateBlocks(service)
-    --creates an array of blocked times by looping through the calendar object
-
-    connect()
-    --connects to the google calendar api
+    The heart of the scheduling program. Contains information on blocked times, available times, the users name and the meeting length.
+    On instantiation, checks whether the blocked source is from the google calendar or from the database. If it's the database, a separate
+    function must be called. If there is a google source, a service object is required for connection to the api.
   """
-  def __init__(self, userName,length,service):
+  def __init__(self, userName, length, service = None, google = True):
     assert userName
     self.service = service
     self.meetingLength = length
     self.blockedTimes = []
     self.availabilities = {'date':None,'times':[]}
     self.userName = userName
-    self._generateBlocks(self.service)
+    # if the source is the google calendar
+    if google:
+      assert service != None
+      self._generateBlocks(self.service)
 
   # Add new blocked out time
-  def _addBlockedTime(self, start, end):
+  def _addBlockedTime(self, start, end, google = True):
+    """
+      Adds a blocked time to the users blocked time
+      -helper function for addClassTimeBlock and _generateBlocks
+
+      start - takes a properly formatted string and sets unavailTime.start
+      end - takes a properly formatted string and sets unavailTime.end
+    """
     newBlock = unavailTime()
-    newBlock.setStart(start)
-    newBlock.setEnd(end)
+    newBlock.setStart(start, google)
+    newBlock.setEnd(end, google)
     if newBlock.check():
       self.blockedTimes.append(newBlock)
       return True
     return False
 
+  def addClassTimeBlock(self, classDays, classStart, classEnd, startDay, endDay):
+    """
+      Adds a blocked time for a class depending on the time frame being tested
+      and the days the class is in session.
+
+      classDays - a compressed string (eg "135") of the numerical days of the week
+      -this is expected from the database
+      classStart - time of day that the class starts; format HH:MM:SS
+      classEnd - time of day that the class ends; format HH:MM:SS
+      startDay - beginning date to look; format MM/DD/YYYY
+      endDay - ending date to check; format MM/DD/YYYY
+    """
+    # convert to datetime and pull day of year back out for the starting day
+    sDay = convertToDatetime(startDay)
+    sDayOfYear = getDayOfYear(sDay)
+    # find the day of the year for the ending day to check
+    eDay = convertToDatetime(endDay)
+    eDayOfYear = getDayOfYear(eDay)
+
+    # loopDay is the modified day of the year that is used to check against the days of the week
+    loopDay = sDay
+    for x in range(sDayOfYear, eDayOfYear + 1):
+      # check to see if the loopDay's day of the week is one of the class days
+      checkDay = getDayOfWeek(loopDay)
+      if checkDay in classDays: 
+        # create formatted start day
+        addStart = loopDay.strftime("%Y-%m-%d") + " " + classStart
+        addStart = convertToDatetimeFull(addStart)
+        # create formatted end day
+        addEnd = loopDay.strftime("%Y-%m-%d") + " " + classEnd
+        addEnd = convertToDatetimeFull(addEnd)
+        # add the block to the blocked times, specify that this is not a google source
+        self._addBlockedTime(addStart,addEnd, False)
+      # increment the day of the year by 1
+      loopDay = loopDay + timedelta(days=1)
+
+
   def getUserName(self):
+    """
+      Simply provides an abstracted method to obtain user name
+    """
     return self.userName
 
   def clearAvail(self):
+    """
+      Clear all availabilities for this specific user
+
+      Used during the find window option
+    """
     self.availabilities = {'date':None,'times':[]}
     return True
 
   # Display a list of availabilities
   def findAvailability(self, startTime, endTime, timeFrame = 15):
+    """
+      Iterate through the blocked times and make a list of available times in between startTime and endTime
+
+      startTime - the beginning time that the user is checking ;a date and time STRING, format 'MM/DD/YYYY HH:MM'
+      endTime - the ending time that the user is checking ;a date and time STRING, format 'MM/DD/YYYY HH:MM'
+      timeFrame - changes the time frames to check (probably not going to be used much, if at all)
+    """
     try:
       # restriction of the time frame for checking to 15 minute increments
       assert self.meetingLength >= 15
@@ -225,21 +264,29 @@ class person:
     return True
 
   def listAvailabilities(self, milTime):
+    """
+      Prints the availabilities in a simple list
+
+      milTime - boolean dictating whether to display in military time
+    """
     try:
       assert (self.availabilities['date'] != None)
       print self.availabilities['date'], self.userName
       for i in self.availabilities['times']:
         printTime(i, milTime)
-        #print self._displayTime(i, milTime)
     except:
       print "Error in printing availabilities"
 
   def _generateBlocks(self, service):
+    """
+      Creates an array of blocked times by looping through the calendar object
+    """
     # loop through calendar for this specific user and add blocked times as they are pulled from api
     try:
       page_token = None
       
       while True:
+        # pull the object, correcting timezone to central
         events = service.events().list(calendarId=self.userName , pageToken=page_token, timeZone='-5:00').execute()
         userName = events['summary']
         for event in events['items']:
@@ -305,16 +352,16 @@ class connection:
     # Construct the service object for the interacting with the Calendar API.
     self.service = discovery.build('calendar', 'v3', http=http)
 
-
-def main(argv):
-  service = connection(argv)
-  user = person("clampitl@onid.oregonstate.edu",30,service.service)
-  user.findAvailability("04/15/2014 07:00", "04/15/2014 21:00")
-  user.listAvailabilities(False)  
+# Uncomment for local testing within the api
+# def main(argv):
+#   service = connection(argv)
+#   user = person("clampitl@onid.oregonstate.edu",30,service.service)
+#   user.findAvailability("04/15/2014 07:00", "04/15/2014 21:00")
+#   user.listAvailabilities(False)  
   
-  user = person("burrows.danny@gmail.com",30,service.service)
-  user.findAvailability("04/15/2014 07:00", "04/15/2014 21:00")
-  user.listAvailabilities(False)  
+#   user = person("burrows.danny@gmail.com",30,service.service)
+#   user.findAvailability("04/15/2014 07:00", "04/15/2014 21:00")
+#   user.listAvailabilities(False)  
  
-if __name__ == '__main__':
-  main(sys.argv)
+# if __name__ == '__main__':
+#   main(sys.argv)

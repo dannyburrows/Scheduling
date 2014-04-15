@@ -1,7 +1,7 @@
 from calendarAPI import person
 from calendarAPI import connection
 from datetime import *
-from timeobject import *
+from timemanip import *
 
 import time
 
@@ -43,13 +43,14 @@ class meeting:
 			self.availableTimes.append(i)
 
 		# trim times that are not listed in each individual persons availability
+		# list comprehension
 		for i in range(1, len(self.users)):
 			self.availableTimes = [elem for elem in self.availableTimes if elem in self.users[i].availabilities['times']]
 	
 	def listAvailTimes(self, milTime):
 		# this can be modified to something different, for whatever interface we end up using
 		for x in self.availableTimes:
-			print printTime(x, milTime)
+			printTime(x, milTime)
 
 	def availInTimeSlot(self):
 		"""
@@ -77,6 +78,12 @@ class meeting:
 		self.availUsers = set(availableUsers)
 
 	def printAvailUsers(self):
+		"""
+			Lists the users that are in availUsers.
+
+			availUsers is appeneded in availInTimeSlot, which returns a list of people that are available
+			for the full time slot passed to the function
+		"""
 		for user in self.availUsers:
 			print user
 	
@@ -100,11 +107,12 @@ class window:
 		self._constructTimes()
 
 
-	def printWindow(self):
+	def printWindow(self, milTime):
 		for i in self.availableDates:
 			print "------" + i['date'] + "------"
 			for availTime in i['times']:
-				print "      ", printTime(availTime, False)
+				print "      ",
+				printTime(availTime, milTime)
 
 	def _constructTimes(self):
 		# startTime/endTime are parameters coming in
@@ -128,7 +136,7 @@ class window:
 		else:
 			endDay = today + timedelta(days=7) # sets ending loop day, where start is today's date
 			start = getStringDate(today) # date conversion for start date
-			end = getStrinDate(endDay) # date conversion for end date
+			end = getStringDate(endDay) # date conversion for end date
 			self.startDate = getDayOfYear(today) # day of the year
 			self.endDate = getDayOfYear(endDay) # day of the year
 			self.beginTime = "08:00" # school hours
@@ -163,12 +171,13 @@ def main():
 	# of a user to ensure connections
 	service = connection()
 	# this is the expected format of the testing times, for this particular implementation
-	start = "04/15/2014 12:00"
-	stop = "04/15/2014 18:00"
+	start = "04/15/2014 10:00"
+	stop = "04/20/2014 18:00"
 	# length will be 15 or greater
 	length = 60
 	userWindow = True
 	shortWindow = False
+	broadWindow = False
 
 	# the meeting class will expect a list of users.
 	# the user names are the name of the calendar owner, found in calendar settings on calendar.google.com
@@ -176,6 +185,16 @@ def main():
 	users = []
 	users.append(person("jonesjo@onid.oregonstate.edu", length, service.service))
 	users.append(person("burrows.danny@gmail.com", length, service.service))
+
+	classDays = "24" # M W F
+	classStart = "15:00:00" # 10 AM
+	classEnd = "16:30:00" # 1130 AM
+	# addClassTimeBlock(self, classDays, classStart, classEnd, startDay, endDay)
+	# start = datetime.now()
+	# end = start + timedelta(days=7)
+	# start = getStringDate(start), end = getStringDate(end)
+	users[1].addClassTimeBlock(classDays, classStart, classEnd, start, stop)
+
 	users.append(person("clampitl@onid.oregonstate.edu", length, service.service))
 	users.append(person("jjames83@gmail.com", length, service.service))
 	
@@ -185,24 +204,36 @@ def main():
 		#
 		# Note that the start takes in both the start date and start time
 		# Stop takes in both the stop date and stop time
-		userWindow = window(users[1],start,stop)
-		userWindow.printWindow()
+		userWindow = window(users[1])#,start,stop) # INDIVIDUAL USER
+		userWindow.printWindow(False)
 	elif shortWindow:
 		#2 	Given a specific time window and a list of usernames, list all users available for the entire duration.
 		#	This is more in the nature of "who can i expect at the meeting"
 		#
 		# Takes in a list of users, the start and stop time of the potential meeting and the expected length of the meeting
 		# The object sets internal variables and calls functions to process and display
+		# The length of the meeting here is ONLY the difference between the start and stop time
 		newMeeting = meeting(start, stop, length, users)
 		newMeeting.availInTimeSlot()
 		newMeeting.printAvailUsers()
-	else:
+	elif broadWindow:
 		#3 	Given a more broad window and a list of usernames, provide all time periods where all are available.
 		#	This is more in the nature of "when can I schedule the meeting?"
 		#
 		# This meeting object is the same structure as #2 but calls a different process to create the list
 		newMeeting = meeting(start, stop, length, users)
 		newMeeting.listAvailTimes(False)
+	else:
+		# this is test the database implementation when it is up
+		# manual checking for now
+		classDays = "135" # M W F
+		classStart = "10:00:00" # 10 AM
+		classEnd = "11:30:00" # 1130 AM
+		# addClassTimeBlock(self, classDays, classStart, classEnd, startDay, endDay)
+		users[1].addClassTimeBlock(classDays, classStart, classEnd, start, stop)
+
+		#newWindow = window(users,start,stop)
+		#newWindow.printWindow()
 
 if __name__ == "__main__":
 	main()

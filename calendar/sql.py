@@ -1,14 +1,27 @@
-#
+#!
 
 import MySQLdb
+import ConfigParser
 
-db = MySQLdb.connect(host="oniddb.cws.oregonstate.edu",user="burrowsd-db",passwd="Pv1h12MLwduJsopk",db="burrowsd-db")
+config = ConfigParser.RawConfigParser()
 
-#cur = db.cursor()
+config.read('sql_config.ini')
+host = config.get('SQL','host')
+db = config.get('SQL','db')
+user = config.get('SQL','user')
+passwd = config.get('SQL','pass')
+# host = config.get('host')
 
-# cur.execute("SELECT * FROM teams")
+# print host
 
-# for row in cur.fetchall():
-# 	print row
+db = MySQLdb.connect(host=host,user=user,passwd=passwd,db=db)
 
-print "End"
+cur = db.cursor()
+
+users=[ 'burrows.danny@gmail.com', 'jonesjo@onid.oregonstate.edu']
+
+for user in users:
+	query="SELECT user_name FROM person WHERE user_name=" + user
+	cur.execute(query)
+	for row in cur.fetchall():
+		print row[1] # only the user name is returned
