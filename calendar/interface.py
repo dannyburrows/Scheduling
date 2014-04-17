@@ -15,10 +15,6 @@ class meeting:
 		--iterates through users list and sets their availabilities in their own class
 		--then iterates through each user's availabilities and creates a list of open times
 
-		_printTime(milTime)
-		--helper function for listAvailabilities
-		--prints the time in either military time or not
-
 		listAvailTime()
 		--run after _findAllAvailabilities()
 		--prints to the screen a list of available times, based on every users availability
@@ -50,7 +46,7 @@ class meeting:
 	def listAvailTimes(self, milTime):
 		# this can be modified to something different, for whatever interface we end up using
 		for x in self.availableTimes:
-			printTime(x, milTime)
+			print printTime(x, milTime)
 
 	def availInTimeSlot(self):
 		"""
@@ -86,6 +82,8 @@ class meeting:
 		"""
 		for user in self.availUsers:
 			print user
+
+	
 	
 
 class window:
@@ -112,7 +110,7 @@ class window:
 			print "------" + i['date'] + "------"
 			for availTime in i['times']:
 				print "      ",
-				printTime(availTime, milTime)
+				print printTime(availTime, milTime)
 
 	def _constructTimes(self):
 		# startTime/endTime are parameters coming in

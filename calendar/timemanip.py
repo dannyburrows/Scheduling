@@ -86,7 +86,7 @@ def getCorrectedTime(input):
 #	       Displaying and calculations			#
 #################################################
 
-def printTime(input, milTime):
+def printTime(input, milTime = False):
 	# moved outside of meeting as we need for single user availability
 	midDay = ""
 	hours = input / 60
@@ -98,7 +98,7 @@ def printTime(input, milTime):
 			midDay = "PM"
 	mins = input % 60
 	time = "%02d:%02d " % (hours, mins) + midDay
-	print time
+	return time
 
 def getTotalMinutes(hours, mins):
 	return hours * 60 + mins
