@@ -177,6 +177,7 @@ class GUIPad:
 		self.tab = tab 			# the tabstop for this specific pad
 		self.pad = self._newBox(height, width, y, x) # draws the pad
 		self.highlighted = highlighted
+		self.modified = True
 
 	def _newBox(self,height,width,y,x):
 		"""
@@ -207,6 +208,8 @@ class button(GUIPad):
 		Parameters
 		focus - if this object is the location of the current tabstop, provide option to move the values
 		"""
+		if not self.modified:
+			return
 		self.pad.clear() # completely wipes this pad
 		if highlight:
 			self.pad.bkgd(curses.color_pair(3))
@@ -216,6 +219,7 @@ class button(GUIPad):
 		if self.box: # draws box is we are supposed to
 			self.pad.box()
 		self.pad.refresh() # redraw the pad
+		self.modifed = False
 
 class listWindow(GUIPad):
 	"""
@@ -245,6 +249,8 @@ class listWindow(GUIPad):
 		Parameters
 		focus - if this object is the location of the current tabstop, provide option to move the values
 		"""
+		if not self.modified:
+			return
 		self.pad.clear() # completely wipes this pad
 		if highlight:
 			self.pad.bkgd(curses.color_pair(3))
@@ -268,6 +274,7 @@ class listWindow(GUIPad):
 		if self.box: # draws box is we are supposed to
 			self.pad.box()
 		self.pad.refresh() # redraw the pad
+		self.modifed = False
 
 	def changeItems(self, items):
 		self.items = items
@@ -280,6 +287,7 @@ class listWindow(GUIPad):
 		Parameters
 		direction - -1 for up, +1 for down, 0 to reset after an event
 		"""
+		self.modified = True
 		self.selection = self.selection + direction
 		# correct for going out of bounds
 		if self.selection == len(self.items):
@@ -573,6 +581,7 @@ def calcTimesSlots(gui, tab):
 				resultsWin = gui.getWin(index)
 				resultsWin.changeItems(times)
 				resultsWin.selection = 0
+				resultsWin.modified = True
 			else:
 				gui.addLabel(31,6,"Available Times")
 				gui.windows.append(listWindow(gui.screen, 20, 20, 32, 4, times, tab.incTab(), True, True))
