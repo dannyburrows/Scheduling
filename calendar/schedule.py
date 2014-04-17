@@ -35,6 +35,9 @@ class GUI:
 
 		curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_GREEN)
 		curses.init_pair(2, curses.COLOR_BLACK, curses.COLOR_YELLOW)
+		curses.init_pair(3, curses.COLOR_WHITE, curses.COLOR_MAGENTA)
+		curses.init_pair(4, curses.COLOR_WHITE, curses.COLOR_BLACK)
+		curses.init_pair(5, curses.COLOR_WHITE, curses.COLOR_RED)
 
 	def drawGUI(self):
 		"""
@@ -56,7 +59,10 @@ class GUI:
 		for x in self.windows:
 			if x == activeWin:
 				# adds the highlighting
-				x.listItems(True)
+				if x.highlighted:
+					x.listItems(True, True)
+				else:
+					x.listItems(True)
 			else:
 				x.listItems()
 
@@ -108,6 +114,16 @@ class GUI:
 			offset = 12 - len(input) # 12 is ~arbitrary based on the locations currently being used, this can be modified
 		self.screen.addstr(y, x + offset, input, curses.color_pair(1))
 
+	def addWarning(self, y, x, input, color):
+		self.clearWarning(y,x)
+		self.screen.addstr(y,x, input, curses.color_pair(color))
+		self.screen.refresh()
+
+	def clearWarning(self, y, x):
+		self.screen.move(y,x)
+		self.screen.clrtoeol()
+		self.screen.box()
+
 	def getStates(self):
 		"""
 		Grabs the values of every item in the window
@@ -156,10 +172,11 @@ class GUIPad:
 	"""
 	Parent class for a pad.
 	"""
-	def __init__(self, screen, height, width, y, x, tab=0):
+	def __init__(self, screen, height, width, y, x, tab=0, highlighted=False):
 		self.screen = screen 	# the screen object that is parent to the pad
 		self.tab = tab 			# the tabstop for this specific pad
 		self.pad = self._newBox(height, width, y, x) # draws the pad
+		self.highlighted = highlighted
 
 	def _newBox(self,height,width,y,x):
 		"""
@@ -174,12 +191,38 @@ class GUIPad:
 		window = self.screen.subpad(height, width, y, x)
 		return window
 
+class button(GUIPad):
+	def __init__(self, screen, y, x, text, tab, box=True, highlighted=True):
+		width = len(text) + 4
+		height = 3
+		GUIPad.__init__(self, screen, height, width, y, x, tab, highlighted)
+		self.box = box 	# tracks whether the pad should be boxed or not
+		self.text = text
+		self.scrollable = False
+
+	def listItems(self, focus=False, highlight=False):
+		"""
+		Display the tied list of this object. Paginates based on the height of the pad and the length of the list.
+
+		Parameters
+		focus - if this object is the location of the current tabstop, provide option to move the values
+		"""
+		self.pad.clear() # completely wipes this pad
+		if highlight:
+			self.pad.bkgd(curses.color_pair(3))
+		else:
+			self.pad.bkgd(curses.color_pair(4))
+		self.pad.addstr(1,2,self.text)
+		if self.box: # draws box is we are supposed to
+			self.pad.box()
+		self.pad.refresh() # redraw the pad
+
 class listWindow(GUIPad):
 	"""
 	A child class of the GUIPad. Provides additional functionality, ties a list to the window, handles display and interaction
 	"""
-	def __init__(self, screen, height, width, y, x, items, tab=0, box=True):
-		GUIPad.__init__(self, screen, height, width, y, x, tab)
+	def __init__(self, screen, height, width, y, x, items, tab, box=True, highlighted=False):
+		GUIPad.__init__(self, screen, height, width, y, x, tab, highlighted)
 		self.selection = 0 		# tracks which item is selected in the list tied to this object
 		self.scrollable = True 	# boolean for whether the pad has scrollable values are not
 		self.box = box 			# tracks whether the pad should be boxed or not
@@ -195,7 +238,7 @@ class listWindow(GUIPad):
 		self.scrollable = input
 		return True
 
-	def listItems(self, focus = False):
+	def listItems(self, focus = False, highlight=False):
 		"""
 		Display the tied list of this object. Paginates based on the height of the pad and the length of the list.
 
@@ -203,6 +246,10 @@ class listWindow(GUIPad):
 		focus - if this object is the location of the current tabstop, provide option to move the values
 		"""
 		self.pad.clear() # completely wipes this pad
+		if highlight:
+			self.pad.bkgd(curses.color_pair(3))
+		else:
+			self.pad.bkgd(curses.color_pair(4))
 		height, width = self.pad.getmaxyx() # get the size of the pad
 		height = height - 2 # remove padding
 		page = 0 # for pagination
@@ -211,7 +258,7 @@ class listWindow(GUIPad):
 		for x in range(0,height): # displays as many lines as can be clean fit inside the pad
 			index = x + (page * height) # holds the index for items to be displayed, as we are not just listing the first X amount
 			if (index) < len(self.items): # prevent out of range error
-				if focus and self.scrollable: # the object is focused, so there will be a color change, and it scrollable so we can display the cursor
+				if focus:# and self.scrollable: # the object is focused, so there will be a color change, and it scrollable so we can display the cursor
 					if (index) == self.selection: # controls the highlighting of the current selection
 						self.pad.addstr(x+1,2, str(self.items[index]), curses.color_pair(2)) # differentiate
 					else:
@@ -251,6 +298,26 @@ class listWindow(GUIPad):
 		except:
 			return None
 
+class tabstop:
+	def __init__(self):
+		self.tab = 0
+		self.maxTab = 0
+
+	def nextTab(self):
+		self.tab = self.tab + 1
+		if self.tab > self.maxTab:
+			self.tab = 0
+
+	def prevTab(self):
+		self.tab = self.tab - 1
+		if self.tab < 0:
+			self.tab = self.maxTab
+
+	def incTab(self):
+		self.maxTab = self.maxTab + 1
+		return self.maxTab
+
+
 def selectedEvent(removes, appends, value):
 	"""
 	On enter inside a field, an event occurs.
@@ -267,7 +334,7 @@ def selectedEvent(removes, appends, value):
 	except:
 		pass
 
-def calcTimeSlots():
+def displayTimeSlots():
 	"""
 	This is the initial work user scenario 3
 	Builds GUI and sets up data structures
@@ -275,11 +342,12 @@ def calcTimeSlots():
 	"""
 	# Instantiate a new GUI module
 	timeslots = GUI()
-
+	tab = tabstop()
 	# Testing purposes
 	startY = 5
 	startX = 46
-
+	warningY = 24
+	warningX = 54
 	# Add all labels
 	timeslots.addLabel(3,6,"Select Users")
 	timeslots.addLabel(17,6,"Currently Selected")
@@ -290,48 +358,54 @@ def calcTimeSlots():
 	timeslots.addLabel(startY+12,startX,"Length:","right")
 
 	# add all the windows that will contain lists of information
-	timeslots.windows.append(listWindow(timeslots.screen, 12, 40, 4, 4, users, 0))
-	timeslots.mapWindows.append({'selectUsers':0})
+	timeslots.windows.append(listWindow(timeslots.screen, 12, 40, 4, 4, users, tab.maxTab, True, True))
+	timeslots.mapWindows.append({'selectUsers':tab.maxTab})
 
-	timeslots.windows.append(listWindow(timeslots.screen, 3, 6, 4, 60, months, 1, False))
-	timeslots.mapWindows.append({'startDateM':1})
+	timeslots.windows.append(listWindow(timeslots.screen, 12, 40, 18, 4, selected, tab.incTab(), True, True))
+	timeslots.mapWindows.append({'selectedUsers':tab.maxTab})
 
-	timeslots.windows.append(listWindow(timeslots.screen, 3, 6, 4, 64, days, 2, False))
-	timeslots.mapWindows.append({'startDateD':2})
+	timeslots.windows.append(listWindow(timeslots.screen, 3, 6, 4, 60, months, tab.incTab(), False))
+	timeslots.mapWindows.append({'startDateM':tab.maxTab})
 
-	timeslots.windows.append(listWindow(timeslots.screen, 3, 8, 4, 68, years, 3, False))
-	timeslots.mapWindows.append({'startDateY':3})
+	timeslots.windows.append(listWindow(timeslots.screen, 3, 6, 4, 64, days, tab.incTab(), False))
+	timeslots.mapWindows.append({'startDateD':tab.maxTab})
 
-	timeslots.windows.append(listWindow(timeslots.screen, 3, 6, 7, 60, months, 4, False))
-	timeslots.mapWindows.append({'endDateM':4})
+	timeslots.windows.append(listWindow(timeslots.screen, 3, 8, 4, 68, years, tab.incTab(), False))
+	timeslots.mapWindows.append({'startDateY':tab.maxTab})
 
-	timeslots.windows.append(listWindow(timeslots.screen, 3, 6, 7, 64, days, 5, False))
-	timeslots.mapWindows.append({'endDateD':5})
+	timeslots.windows.append(listWindow(timeslots.screen, 3, 6, 7, 60, months, tab.incTab(), False))
+	timeslots.mapWindows.append({'endDateM':tab.maxTab})
+	timeslots.windows[-1].setScrollable(False)
 
-	timeslots.windows.append(listWindow(timeslots.screen, 3, 8, 7, 68, years, 6, False))
-	timeslots.mapWindows.append({'endDateY':6})
+	timeslots.windows.append(listWindow(timeslots.screen, 3, 6, 7, 64, days, tab.incTab(), False))
+	timeslots.mapWindows.append({'endDateD':tab.maxTab})
+	timeslots.windows[-1].setScrollable(False)
 
-	timeslots.windows.append(listWindow(timeslots.screen, 3, 6, 10, 60, hours, 7, False))
-	timeslots.mapWindows.append({'startH':7})
+	timeslots.windows.append(listWindow(timeslots.screen, 3, 8, 7, 68, years, tab.incTab(), False))
+	timeslots.mapWindows.append({'endDateY':tab.maxTab})
+	timeslots.windows[-1].setScrollable(False)
 
-	timeslots.windows.append(listWindow(timeslots.screen, 3, 8, 10, 64, mins, 8, False))
-	timeslots.mapWindows.append({'startM':8})
+	timeslots.windows.append(listWindow(timeslots.screen, 3, 6, 10, 60, hours, tab.incTab(), False))
+	timeslots.mapWindows.append({'startH':tab.maxTab})
 
-	timeslots.windows.append(listWindow(timeslots.screen, 3, 6, 13, 60, hours, 9, False))
-	timeslots.mapWindows.append({'endH':9})
+	timeslots.windows.append(listWindow(timeslots.screen, 3, 8, 10, 64, mins, tab.incTab(), False))
+	timeslots.mapWindows.append({'startM':tab.maxTab})
 
-	timeslots.windows.append(listWindow(timeslots.screen, 3, 8, 13, 64, mins, 10, False))
-	timeslots.mapWindows.append({'endM':10})
+	timeslots.windows.append(listWindow(timeslots.screen, 3, 6, 13, 60, hours, tab.incTab(), False))
+	timeslots.mapWindows.append({'endH':tab.maxTab})
 
-	timeslots.windows.append(listWindow(timeslots.screen, 3, 8, 16, 60, lengths, 11, False))
-	timeslots.mapWindows.append({'length':11})
+	timeslots.windows.append(listWindow(timeslots.screen, 3, 8, 13, 64, mins,tab.incTab(), False))
+	timeslots.mapWindows.append({'endM':tab.maxTab})
 
-	timeslots.windows.append(listWindow(timeslots.screen, 12, 40, 18, 4, selected, 12))
-	timeslots.mapWindows.append({'selectedUsers':12})
+	timeslots.windows.append(listWindow(timeslots.screen, 3, 8, 16, 60, lengths, tab.incTab(), False))
+	timeslots.mapWindows.append({'length':tab.maxTab})
+
+	timeslots.windows.append(button(timeslots.screen,20,50,"Submit",tab.incTab()))
+	timeslots.mapWindows.append({'submit':tab.maxTab})
 
 	timeslots.drawGUI()
-	tab = 0
-	timeslots.redrawGUI(tab)
+	tab.tab = 0
+	timeslots.redrawGUI(tab.tab)
 
 	while True:
 		event = timeslots.screen.getch()
@@ -341,54 +415,120 @@ def calcTimeSlots():
 		elif event == curses.KEY_DOWN:
 			# find which window we're in and modify that value
 			# move the index forward 1
-			activeWin = timeslots.getWin(tab)
-			try:
-				activeWin.changeSelection(+1)
-			except:
-				pass
-			timeslots.redrawGUI(tab)
+			activeWin = timeslots.getWin(tab.tab)
+			if activeWin.scrollable == False:
+				# value cannot be modified
+				# display an error message
+				timeslots.addWarning(warningY, warningX, "Cannot modify value",5)
+			elif tab.tab == timeslots.getMap('startDateM'):
+				endIndex = timeslots.getMap('endDateM')
+				endWin = timeslots.getWin(endIndex)
+				try:
+					activeWin.changeSelection(+1)	
+					endWin.changeSelection(+1)
+				except:
+					pass
+			elif tab.tab == timeslots.getMap('startDateD'):
+				endIndex = timeslots.getMap('endDateD')
+				endWin = timeslots.getWin(endIndex)
+				try:
+					activeWin.changeSelection(+1)	
+					endWin.changeSelection(+1)
+				except:
+					pass
+			elif tab.tab == timeslots.getMap('startDateY'):
+				endIndex = timeslots.getMap('endDateY')
+				endWin = timeslots.getWin(endIndex)
+				try:
+					activeWin.changeSelection(+1)	
+					endWin.changeSelection(+1)
+				except:
+					pass
+			else:
+				try:
+					activeWin.changeSelection(+1)
+				except:
+					pass
+			timeslots.redrawGUI(tab.tab)
 		elif event == curses.KEY_UP:
 			# find which window we're in and modify that value
 			# move the index back 1
-			activeWin = timeslots.getWin(tab)
-			try:
-				activeWin.changeSelection(-1)
-			except:
-				pass
-			timeslots.redrawGUI(tab)
+			activeWin = timeslots.getWin(tab.tab)
+			if activeWin.scrollable == False:
+				timeslots.addWarning(warningY, warningX, "Cannot modify value",5)
+			elif tab.tab == timeslots.getMap('startDateM'):
+				endIndex = timeslots.getMap('endDateM')
+				endWin = timeslots.getWin(endIndex)
+				try:
+					activeWin.changeSelection(-1)	
+					endWin.changeSelection(-1)
+				except:
+					pass
+			elif tab.tab == timeslots.getMap('startDateD'):
+				endIndex = timeslots.getMap('endDateD')
+				endWin = timeslots.getWin(endIndex)
+				try:
+					activeWin.changeSelection(-1)	
+					endWin.changeSelection(-1)
+				except:
+					pass
+			elif tab.tab == timeslots.getMap('startDateY'):
+				endIndex = timeslots.getMap('endDateY')
+				endWin = timeslots.getWin(endIndex)
+				try:
+					activeWin.changeSelection(-1)	
+					endWin.changeSelection(-1)
+				except:
+					pass
+			else:
+				try:
+					activeWin.changeSelection(-1)
+				except:
+					pass
+			timeslots.redrawGUI(tab.tab)
 		elif event == curses.KEY_LEFT:
 			# move the tabstop and redraw windows, highlighting the next window
-			tab = tab - 1
-			if tab < 0:
-				tab = len(timeslots.windows) - 1
-			timeslots.redrawGUI(tab)
+			timeslots.clearWarning(warningY, warningX)
+			tab.prevTab()
+			timeslots.redrawGUI(tab.tab)
 		elif event == ord("\t") or event == curses.KEY_RIGHT:
 			# move the tabstop and redraw windows, highlighting the next window
-			tab = tab + 1
-			if tab >= len(timeslots.windows):
-				tab = 0
-			timeslots.redrawGUI(tab)
+			timeslots.clearWarning(warningY, warningX)
+			tab.nextTab()
+			timeslots.redrawGUI(tab.tab)
 		elif event == ord("\n"):
 			# on this screen, there are only two boxes that will prompt an event
-			if tab == timeslots.getMap('selectUsers'):
-				activeWin = timeslots.getWin(tab)
+			if tab.tab == timeslots.getMap('selectUsers'):
+				activeWin = timeslots.getWin(tab.tab)
 				modifyIndex = timeslots.getMap('selectedUsers')
 				changeWin = timeslots.getWin(modifyIndex)
 				value = activeWin.getSelectedValue()
 				selectedEvent(activeWin.items, changeWin.items, value)
 				activeWin.changeSelection(0)
 			# in the selected user box, remove selected user
-			elif tab == timeslots.getMap('selectedUsers'):
-				activeWin = timeslots.getWin(tab)
+			elif tab.tab == timeslots.getMap('selectedUsers'):
+				activeWin = timeslots.getWin(tab.tab)
 				modifyIndex = timeslots.getMap('selectUsers')
 				changeWin = timeslots.getWin(modifyIndex)
 				value = activeWin.getSelectedValue()
 				selectedEvent(activeWin.items, changeWin.items, value)
 				activeWin.changeSelection(0)
+			elif tab.tab == timeslots.getMap('submit'):
+				timeslots.addWarning(warningY, warningX, "Processing request...", 5)
+				if calcTimesSlots(timeslots, tab):
+					pass
+				timeslots.addWarning(warningY, warningX, "Finished!!", 1)
 
-			timeslots.redrawGUI(tab)
+			timeslots.redrawGUI(tab.tab)
 		
 		elif event == ord("p"):
+			timeslots.addWarning(warningY, warningX, "Processing request...", 5)
+			if calcTimesSlots(timeslots, tab):
+				pass
+			timeslots.addWarning(warningY, warningX, "Finished!!", 1)
+			
+
+def calcTimesSlots(gui, tab):
 			# process the event
 			service = connection()
 			userNames = []
@@ -397,13 +537,12 @@ def calcTimeSlots():
 			#															#
 			# This line will require SIGNIFICANT error checking:		#
 			# -ensure the end date and time are after the start 		#
-			# -for this particular case, the dates should be the same 	#
 			# -odd days of the month? 30t of feb, 31 of Nov, etc        #
 			# -edge cases 												#
 			# -years?													#
 			#															#
 			#############################################################
-			start, stop, length, userNames = timeslots.getStates()
+			start, stop, length, userNames = gui.getStates()
 			#############################################################
 			#															#
 			# Start the integration with the interface for the calendar #
@@ -426,20 +565,23 @@ def calcTimeSlots():
 				times.append(printTime(x))
 			# check if we have already polled results, if so, then just modify that structure
 			try:
-				index = timeslots.getMap('results')
+				index = gui.getMap('results')
 			except:
 				index = 0
 
 			if index:
-				resultsWin = timeslots.getWin(index)
+				resultsWin = gui.getWin(index)
 				resultsWin.changeItems(times)
+				resultsWin.selection = 0
 			else:
-				timeslots.addLabel(31,6,"Available Times")
-				timeslots.windows.append(listWindow(timeslots.screen, 20, 20, 32, 4, times, 13))
-				timeslots.mapWindows.append({'results':13})
+				gui.addLabel(31,6,"Available Times")
+				gui.windows.append(listWindow(gui.screen, 20, 20, 32, 4, times, tab.incTab(), True, True))
+				gui.mapWindows.append({'results':tab.maxTab})
 			
 			# rebuild GUI
-			timeslots.redrawGUI(tab)
+			tab.tab = tab.maxTab
+			gui.redrawGUI(tab)
+			return True
 
 if __name__ == "__main__":
 	# Test structures
@@ -455,4 +597,5 @@ if __name__ == "__main__":
 	scenario = 3
 
 	if scenario == 3:
-		calcTimeSlots()
+		displayTimeSlots()
+		#calcTimeSlots()
