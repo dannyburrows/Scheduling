@@ -1,14 +1,14 @@
 /****************************************\
-|*	Interacting with the Interface      *|
-|*	Written by Danny Burrows            *|
-|*	burrows.danny@gmail.com             *|
-|*	CS419 - Spring 2014                 *|
-|*	Group Project                       *|
-|*	04/14/2014                          *|
-|*	                                    *|
-|*	Documentation for interface.py      *|
-|*	which uses calendarAPI.py and       *|
-|*	timemanip.py.                       *|
+|*  Interacting with the Interface      *|
+|*  Written by Danny Burrows            *|
+|*  burrows.danny@gmail.com             *|
+|*  CS419 - Spring 2014                 *|
+|*  Group Project                       *|
+|*  04/14/2014                          *|
+|*                                      *|
+|*  Documentation for interface.py      *|
+|*  which uses calendarAPI.py and       *|
+|*  timemanip.py.                       *|
 \****************************************/
 
 *Seeing as I have made significant headway, without a lot of sharing code, I figured I needed to bring everyone up to speed with my progress. This short document attempts to highlight the important features and methods in which to call and interact with the various objects that have been created. Realistically speaking, this is most of the back end of the project. We should take same time and test things thoroughly, as I have spot tested to ensure everything is working. I would like to update this and make sure that it is user friendly and that you have no problems using the libraries so far.*

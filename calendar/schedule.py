@@ -143,6 +143,11 @@ class GUI:
 		end = endDate + " " + endTime
 		return start, end, int(length), userNames
 
+	def winExists(self,input):
+		if input in self.mapWindows[0]:
+			return True
+		return False
+
 	def _getDate(self, input):
 		"""
 		Gets the values for the date attributes off the pads
@@ -219,7 +224,7 @@ class button(GUIPad):
 		if self.box: # draws box is we are supposed to
 			self.pad.box()
 		self.pad.refresh() # redraw the pad
-		self.modifed = False
+		self.modified = False
 
 class listWindow(GUIPad):
 	"""
@@ -274,9 +279,11 @@ class listWindow(GUIPad):
 		if self.box: # draws box is we are supposed to
 			self.pad.box()
 		self.pad.refresh() # redraw the pad
-		self.modifed = False
+		self.modified = False
 
 	def changeItems(self, items):
+		self.selection = 0
+		self.modified = True
 		self.items = items
 		return True
 
@@ -497,12 +504,20 @@ def displayTimeSlots():
 		elif event == curses.KEY_LEFT:
 			# move the tabstop and redraw windows, highlighting the next window
 			timeslots.clearWarning(warningY, warningX)
+			curWin = timeslots.getWin(tab.tab)
 			tab.prevTab()
+			newWin = timeslots.getWin(tab.tab)
+			curWin.modified = True
+			newWin.modified = True
 			timeslots.redrawGUI(tab.tab)
 		elif event == ord("\t") or event == curses.KEY_RIGHT:
 			# move the tabstop and redraw windows, highlighting the next window
 			timeslots.clearWarning(warningY, warningX)
+			curWin = timeslots.getWin(tab.tab)
 			tab.nextTab()
+			newWin = timeslots.getWin(tab.tab)
+			newWin.modified = True
+			curWin.modified = True
 			timeslots.redrawGUI(tab.tab)
 		elif event == ord("\n"):
 			# on this screen, there are only two boxes that will prompt an event
@@ -513,6 +528,7 @@ def displayTimeSlots():
 				value = activeWin.getSelectedValue()
 				selectedEvent(activeWin.items, changeWin.items, value)
 				activeWin.changeSelection(0)
+				changeWin.changeSelection(0)
 			# in the selected user box, remove selected user
 			elif tab.tab == timeslots.getMap('selectedUsers'):
 				activeWin = timeslots.getWin(tab.tab)
@@ -521,20 +537,20 @@ def displayTimeSlots():
 				value = activeWin.getSelectedValue()
 				selectedEvent(activeWin.items, changeWin.items, value)
 				activeWin.changeSelection(0)
+				changeWin.changeSelection(0)
 			elif tab.tab == timeslots.getMap('submit'):
 				timeslots.addWarning(warningY, warningX, "Processing request...", 5)
+				curWin = timeslots.getWin(tab.tab)
+				curWin.modified = True
+				exists = timeslots.winExists('results')
 				if calcTimesSlots(timeslots, tab):
+					tab.tab = tab.maxTab
 					pass
+				else:
+					curWin.modified = False
 				timeslots.addWarning(warningY, warningX, "Finished!!", 1)
 
-			timeslots.redrawGUI(tab.tab)
-		
-		elif event == ord("p"):
-			timeslots.addWarning(warningY, warningX, "Processing request...", 5)
-			if calcTimesSlots(timeslots, tab):
-				pass
-			timeslots.addWarning(warningY, warningX, "Finished!!", 1)
-			
+			timeslots.redrawGUI(tab.tab)			
 
 def calcTimesSlots(gui, tab):
 			# process the event
@@ -570,7 +586,7 @@ def calcTimesSlots(gui, tab):
 			# no need to access directly
 			for x in newMeeting.availableTimes:
 				# user friendly format
-				times.append(printTime(x))
+				times.append(printTime(x) + " - "+ printTime(x + length))
 			# check if we have already polled results, if so, then just modify that structure
 			try:
 				index = gui.getMap('results')
@@ -580,16 +596,12 @@ def calcTimesSlots(gui, tab):
 			if index:
 				resultsWin = gui.getWin(index)
 				resultsWin.changeItems(times)
-				resultsWin.selection = 0
-				resultsWin.modified = True
 			else:
 				gui.addLabel(31,6,"Available Times")
-				gui.windows.append(listWindow(gui.screen, 20, 20, 32, 4, times, tab.incTab(), True, True))
+				gui.windows.append(listWindow(gui.screen, 20, 23, 32, 4, times, tab.incTab(), True, True))
 				gui.mapWindows.append({'results':tab.maxTab})
 			
-			# rebuild GUI
 			tab.tab = tab.maxTab
-			gui.redrawGUI(tab)
 			return True
 
 if __name__ == "__main__":

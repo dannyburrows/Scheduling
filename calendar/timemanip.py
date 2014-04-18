@@ -92,7 +92,9 @@ def printTime(input, milTime = False):
 	hours = input / 60
 	if not milTime:
 		midDay = "AM"
-		if hours >= 12:
+		if hours == 00:
+			hours = 12
+		elif hours >= 12:
 			if hours >= 13:
 				hours = hours - 12
 			midDay = "PM"
