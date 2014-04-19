@@ -98,7 +98,7 @@ class GUI:
 				return x
 		return None
 
-	def addLabel(self, y, x, input, justify=None):
+	def addLabel(self, y, x, input, justify=None, color=1):
 		"""
 		Displays a label at specific location.
 
@@ -112,9 +112,9 @@ class GUI:
 		offset = 0
 		if justify == "right":
 			offset = 12 - len(input) # 12 is ~arbitrary based on the locations currently being used, this can be modified
-		self.screen.addstr(y, x + offset, input, curses.color_pair(1))
+		self.screen.addstr(y, x + offset, input, curses.color_pair(color))
 
-	def addWarning(self, y, x, input, color):
+	def addNotification(self, y, x, input, color):
 		self.clearWarning(y,x)
 		self.screen.addstr(y,x, input, curses.color_pair(color))
 		self.screen.refresh()
@@ -134,8 +134,11 @@ class GUI:
 		index = self.getMap('selectedUsers')		# the index (tabstop) for the people the user has selected to query
 		for x in self.windows[index].items:		
 			userNames.append(x)
-		startDate = self._getDate("startDate")	# gets the starting date, in a standard format MM/DD/YYYY
-		endDate = self._getDate("endDate")		# gets ending date
+		startDate = self.getDate("startDate")	# gets the starting date, in a standard format MM/DD/YYYY
+		if self.winExists('endDateM'):
+			endDate = self.getDate("endDate")	# gets ending date
+		else:
+			endDate = startDate
 		startTime = self._getTime("start")		# gets starting time, in standard format HH:MM
 		endTime = self._getTime("end")			# gets ending time
 		length = self.windows[self.getMap('length')].getSelectedValue() # gets the length attribute
@@ -148,7 +151,7 @@ class GUI:
 			return True
 		return False
 
-	def _getDate(self, input):
+	def getDate(self, input):
 		"""
 		Gets the values for the date attributes off the pads
 
@@ -332,277 +335,221 @@ class tabstop:
 		self.maxTab = self.maxTab + 1
 		return self.maxTab
 
+class timeSlots():
+	def __init__(self):
+		self.gui = GUI()
+		self.tab = tabstop()
+		self.selected = []
+		self.users = ['burrows.danny@gmail.com', 'jonesjo@onid.oregonstate.edu', 'clampitl@onid.oregonstate.edu', 'jjames83@gmail.com']
+		self.warningY = 54
+		self.warningX = 6
+		self.buildWindows()
+		self.tab.tab = 0
+		self.gui.drawGUI()
+		self.gui.redrawGUI(self.tab.tab)
 
-def selectedEvent(removes, appends, value):
-	"""
-	On enter inside a field, an event occurs.
-	Wrapped in a try..except to prevent values that are no longer in the list from being removed
+	def buildWindows(self):
+		# add all the windows that will contain lists of information
+		self.gui.addLabel(2,6," Select Users ")
+		self.gui.windows.append(listWindow(self.gui.screen, 16, 40, 3, 4, users, self.tab.maxTab, True, True))
+		self.gui.mapWindows.append({'selectUsers':self.tab.maxTab})
 
-	Parameters
-	removes - the list to remove the value from
-	appends - the list to append the value to
-	value - the specific value that should be removed and appended
-	"""
-	try:
-		removes.remove(value)
-		appends.append(value)
-	except:
-		pass
+		self.gui.addLabel(20,6," Currently Selected ")
+		self.gui.windows.append(listWindow(self.gui.screen, 16, 40, 21, 4, selected, self.tab.incTab(), True, True))
+		self.gui.mapWindows.append({'selectedUsers':self.tab.maxTab})
 
-def displayTimeSlots():
-	"""
-	This is the initial work user scenario 3
-	Builds GUI and sets up data structures
-	Queries the interface to get the calendar information
-	"""
-	# Instantiate a new GUI module
-	timeslots = GUI()
-	tab = tabstop()
-	# Testing purposes
-	startY = 5
-	startX = 46
-	warningY = 24
-	warningX = 54
-	# Add all labels
-	timeslots.addLabel(3,6,"Select Users")
-	timeslots.addLabel(17,6,"Currently Selected")
-	timeslots.addLabel(startY,startX,"Start date:","right")
-	timeslots.addLabel(startY+3,startX,"End date:","right")
-	timeslots.addLabel(startY+6,startX,"Start time:","right")
-	timeslots.addLabel(startY+9,startX,"End time:","right")
-	timeslots.addLabel(startY+12,startX,"Length:","right")
+		self.gui.addLabel(38, 20, "MM / DD / YYYY", color=4)
+		self.gui.addLabel(40, 6,"Start date:","right")
+		self.gui.windows.append(listWindow(self.gui.screen, 3, 6, 39, 18, months, self.tab.incTab(), False))
+		self.gui.mapWindows.append({'startDateM':self.tab.maxTab})
 
-	# add all the windows that will contain lists of information
-	timeslots.windows.append(listWindow(timeslots.screen, 12, 40, 4, 4, users, tab.maxTab, True, True))
-	timeslots.mapWindows.append({'selectUsers':tab.maxTab})
+		self.gui.windows.append(listWindow(self.gui.screen, 3, 6, 39, 23, days, self.tab.incTab(), False))
+		self.gui.mapWindows.append({'startDateD':self.tab.maxTab})
 
-	timeslots.windows.append(listWindow(timeslots.screen, 12, 40, 18, 4, selected, tab.incTab(), True, True))
-	timeslots.mapWindows.append({'selectedUsers':tab.maxTab})
+		self.gui.windows.append(listWindow(self.gui.screen, 3, 8, 39, 28, years, self.tab.incTab(), False))
+		self.gui.mapWindows.append({'startDateY':self.tab.maxTab})
 
-	timeslots.windows.append(listWindow(timeslots.screen, 3, 6, 4, 60, months, tab.incTab(), False))
-	timeslots.mapWindows.append({'startDateM':tab.maxTab})
+		self.gui.addLabel(42,20,"MM : HH",color=4)
+		self.gui.addLabel(44,6,"Start time:","right")
+		self.gui.windows.append(listWindow(self.gui.screen, 3, 6, 43, 18, hours, self.tab.incTab(), False))
+		self.gui.mapWindows.append({'startH':self.tab.maxTab})
+		self.gui.windows.append(listWindow(self.gui.screen, 3, 8, 43, 22, mins, self.tab.incTab(), False))
+		self.gui.mapWindows.append({'startM':self.tab.maxTab})
 
-	timeslots.windows.append(listWindow(timeslots.screen, 3, 6, 4, 64, days, tab.incTab(), False))
-	timeslots.mapWindows.append({'startDateD':tab.maxTab})
+		self.gui.addLabel(46,20,"MM : HH",color=4)
+		self.gui.addLabel(48,6,"End time:","right")
+		self.gui.windows.append(listWindow(self.gui.screen, 3, 6, 47, 18, hours, self.tab.incTab(), False))
+		self.gui.mapWindows.append({'endH':self.tab.maxTab})
 
-	timeslots.windows.append(listWindow(timeslots.screen, 3, 8, 4, 68, years, tab.incTab(), False))
-	timeslots.mapWindows.append({'startDateY':tab.maxTab})
+		self.gui.windows.append(listWindow(self.gui.screen, 3, 8, 47, 22, mins,self.tab.incTab(), False))
+		self.gui.mapWindows.append({'endM':self.tab.maxTab})
 
-	timeslots.windows.append(listWindow(timeslots.screen, 3, 6, 7, 60, months, tab.incTab(), False))
-	timeslots.mapWindows.append({'endDateM':tab.maxTab})
-	timeslots.windows[-1].setScrollable(False)
+		self.gui.addLabel(50,20,"Mins", color=4)
+		self.gui.addLabel(52,6,"Length:","right")
+		self.gui.windows.append(listWindow(self.gui.screen, 3, 8, 51, 18, lengths, self.tab.incTab(), False))
+		self.gui.mapWindows.append({'length':self.tab.maxTab})
 
-	timeslots.windows.append(listWindow(timeslots.screen, 3, 6, 7, 64, days, tab.incTab(), False))
-	timeslots.mapWindows.append({'endDateD':tab.maxTab})
-	timeslots.windows[-1].setScrollable(False)
+		self.gui.windows.append(button(self.gui.screen,56,6,"Submit",self.tab.incTab()))
+		self.gui.mapWindows.append({'submit':self.tab.maxTab})
 
-	timeslots.windows.append(listWindow(timeslots.screen, 3, 8, 7, 68, years, tab.incTab(), False))
-	timeslots.mapWindows.append({'endDateY':tab.maxTab})
-	timeslots.windows[-1].setScrollable(False)
+		self.gui.windows.append(button(self.gui.screen,56,18:00,"Exit",self.tab.incTab()))
+		self.gui.mapWindows.append({'exit':self.tab.maxTab})
 
-	timeslots.windows.append(listWindow(timeslots.screen, 3, 6, 10, 60, hours, tab.incTab(), False))
-	timeslots.mapWindows.append({'startH':tab.maxTab})
+	def mainLoop(self):
+		while True:
+			event = self.gui.screen.getch()
+			if event == ord("q"):
+				self.gui.close()
+				break
+			elif event == curses.KEY_DOWN:
+				self._processUpDown(+1)
+			elif event == curses.KEY_UP:
+				self._processUpDown(-1)
+			elif event == curses.KEY_LEFT:
+				self._moveTab(-1)
+			elif event == ord("\t") or event == curses.KEY_RIGHT:
+				self._moveTab(+1)
+			elif event == ord("\n"):
+				self.processEnter()
 
-	timeslots.windows.append(listWindow(timeslots.screen, 3, 8, 10, 64, mins, tab.incTab(), False))
-	timeslots.mapWindows.append({'startM':tab.maxTab})
+			self.gui.redrawGUI(self.tab.tab)
 
-	timeslots.windows.append(listWindow(timeslots.screen, 3, 6, 13, 60, hours, tab.incTab(), False))
-	timeslots.mapWindows.append({'endH':tab.maxTab})
-
-	timeslots.windows.append(listWindow(timeslots.screen, 3, 8, 13, 64, mins,tab.incTab(), False))
-	timeslots.mapWindows.append({'endM':tab.maxTab})
-
-	timeslots.windows.append(listWindow(timeslots.screen, 3, 8, 16, 60, lengths, tab.incTab(), False))
-	timeslots.mapWindows.append({'length':tab.maxTab})
-
-	timeslots.windows.append(button(timeslots.screen,20,50,"Submit",tab.incTab()))
-	timeslots.mapWindows.append({'submit':tab.maxTab})
-
-	timeslots.drawGUI()
-	tab.tab = 0
-	timeslots.redrawGUI(tab.tab)
-
-	while True:
-		event = timeslots.screen.getch()
-		if event == ord("q"):
-			timeslots.close()
-			break
-		elif event == curses.KEY_DOWN:
-			# find which window we're in and modify that value
-			# move the index forward 1
-			activeWin = timeslots.getWin(tab.tab)
-			if activeWin.scrollable == False:
-				# value cannot be modified
-				# display an error message
-				timeslots.addWarning(warningY, warningX, "Cannot modify value",5)
-			elif tab.tab == timeslots.getMap('startDateM'):
-				endIndex = timeslots.getMap('endDateM')
-				endWin = timeslots.getWin(endIndex)
-				try:
-					activeWin.changeSelection(+1)	
-					endWin.changeSelection(+1)
-				except:
-					pass
-			elif tab.tab == timeslots.getMap('startDateD'):
-				endIndex = timeslots.getMap('endDateD')
-				endWin = timeslots.getWin(endIndex)
-				try:
-					activeWin.changeSelection(+1)	
-					endWin.changeSelection(+1)
-				except:
-					pass
-			elif tab.tab == timeslots.getMap('startDateY'):
-				endIndex = timeslots.getMap('endDateY')
-				endWin = timeslots.getWin(endIndex)
-				try:
-					activeWin.changeSelection(+1)	
-					endWin.changeSelection(+1)
-				except:
-					pass
-			else:
-				try:
-					activeWin.changeSelection(+1)
-				except:
-					pass
-			timeslots.redrawGUI(tab.tab)
-		elif event == curses.KEY_UP:
-			# find which window we're in and modify that value
-			# move the index back 1
-			activeWin = timeslots.getWin(tab.tab)
-			if activeWin.scrollable == False:
-				timeslots.addWarning(warningY, warningX, "Cannot modify value",5)
-			elif tab.tab == timeslots.getMap('startDateM'):
-				endIndex = timeslots.getMap('endDateM')
-				endWin = timeslots.getWin(endIndex)
-				try:
-					activeWin.changeSelection(-1)	
-					endWin.changeSelection(-1)
-				except:
-					pass
-			elif tab.tab == timeslots.getMap('startDateD'):
-				endIndex = timeslots.getMap('endDateD')
-				endWin = timeslots.getWin(endIndex)
-				try:
-					activeWin.changeSelection(-1)	
-					endWin.changeSelection(-1)
-				except:
-					pass
-			elif tab.tab == timeslots.getMap('startDateY'):
-				endIndex = timeslots.getMap('endDateY')
-				endWin = timeslots.getWin(endIndex)
-				try:
-					activeWin.changeSelection(-1)	
-					endWin.changeSelection(-1)
-				except:
-					pass
-			else:
-				try:
-					activeWin.changeSelection(-1)
-				except:
-					pass
-			timeslots.redrawGUI(tab.tab)
-		elif event == curses.KEY_LEFT:
-			# move the tabstop and redraw windows, highlighting the next window
-			timeslots.clearWarning(warningY, warningX)
-			curWin = timeslots.getWin(tab.tab)
-			tab.prevTab()
-			newWin = timeslots.getWin(tab.tab)
-			curWin.modified = True
-			newWin.modified = True
-			timeslots.redrawGUI(tab.tab)
-		elif event == ord("\t") or event == curses.KEY_RIGHT:
-			# move the tabstop and redraw windows, highlighting the next window
-			timeslots.clearWarning(warningY, warningX)
-			curWin = timeslots.getWin(tab.tab)
-			tab.nextTab()
-			newWin = timeslots.getWin(tab.tab)
-			newWin.modified = True
-			curWin.modified = True
-			timeslots.redrawGUI(tab.tab)
-		elif event == ord("\n"):
-			# on this screen, there are only two boxes that will prompt an event
-			if tab.tab == timeslots.getMap('selectUsers'):
-				activeWin = timeslots.getWin(tab.tab)
-				modifyIndex = timeslots.getMap('selectedUsers')
-				changeWin = timeslots.getWin(modifyIndex)
-				value = activeWin.getSelectedValue()
-				selectedEvent(activeWin.items, changeWin.items, value)
-				activeWin.changeSelection(0)
-				changeWin.changeSelection(0)
-			# in the selected user box, remove selected user
-			elif tab.tab == timeslots.getMap('selectedUsers'):
-				activeWin = timeslots.getWin(tab.tab)
-				modifyIndex = timeslots.getMap('selectUsers')
-				changeWin = timeslots.getWin(modifyIndex)
-				value = activeWin.getSelectedValue()
-				selectedEvent(activeWin.items, changeWin.items, value)
-				activeWin.changeSelection(0)
-				changeWin.changeSelection(0)
-			elif tab.tab == timeslots.getMap('submit'):
-				timeslots.addWarning(warningY, warningX, "Processing request...", 5)
-				curWin = timeslots.getWin(tab.tab)
-				curWin.modified = True
-				exists = timeslots.winExists('results')
-				if calcTimesSlots(timeslots, tab):
-					tab.tab = tab.maxTab
-					pass
-				else:
-					curWin.modified = False
-				timeslots.addWarning(warningY, warningX, "Finished!!", 1)
-
-			timeslots.redrawGUI(tab.tab)			
-
-def calcTimesSlots(gui, tab):
-			# process the event
-			service = connection()
-			userNames = []
-			people = []
-			#############################################################
-			#															#
-			# This line will require SIGNIFICANT error checking:		#
-			# -ensure the end date and time are after the start 		#
-			# -odd days of the month? 30t of feb, 31 of Nov, etc        #
-			# -edge cases 												#
-			# -years?													#
-			#															#
-			#############################################################
-			start, stop, length, userNames = gui.getStates()
-			#############################################################
-			#															#
-			# Start the integration with the interface for the calendar #
-			# api and other functions.                                  #
-			# Need to work on the interface to automatically add events #
-			# that are pulled from database, no need to do it here.     #
-			#															#
-			#############################################################
-			for user in userNames:
-			 	people.append(person(user, length, service.service))
-
-			# create a meeting object that will hold availability information for the group
-			newMeeting = meeting(start, stop, length, people)
-			# run algorithm to find available time slots
-			newMeeting.availInTimeSlot()
-			times = []
-			# no need to access directly
-			for x in newMeeting.availableTimes:
-				# user friendly format
-				times.append(printTime(x) + " - "+ printTime(x + length))
-			# check if we have already polled results, if so, then just modify that structure
+	def _processUpDown(self, direction):
+		# find which window we're in and modify that value
+		# move the index back 1
+		activeWin = self.gui.getWin(self.tab.tab)
+		if activeWin.scrollable == False:
+			self.gui.addNotification(self.warningY, self.warningX, "Cannot modify value",5)
+		elif self.tab.tab == self.gui.getMap('startDateM') or self.tab.tab == self.gui.getMap('startDateD') or self.tab.tab == self.gui.getMap('startDateY'):
 			try:
-				index = gui.getMap('results')
+				activeWin.changeSelection(direction)	
 			except:
-				index = 0
+				pass
+		else:
+			try:
+				activeWin.changeSelection(direction)
+			except:
+				pass
 
-			if index:
-				resultsWin = gui.getWin(index)
-				resultsWin.changeItems(times)
-			else:
-				gui.addLabel(31,6,"Available Times")
-				gui.windows.append(listWindow(gui.screen, 20, 23, 32, 4, times, tab.incTab(), True, True))
-				gui.mapWindows.append({'results':tab.maxTab})
-			
-			tab.tab = tab.maxTab
-			return True
+	def _moveTab(self, direction):
+		if direction == +1:
+			# move the tabstop and redraw windows, highlighting the next window
+			self.gui.clearWarning(self.warningY, self.warningX)
+			curWin = self.gui.getWin(self.tab.tab)
+			self.tab.nextTab()
+			newWin = self.gui.getWin(self.tab.tab)
+			newWin.modified = True
+			curWin.modified = True
+		elif direction == -1:
+			# move the tabstop and redraw windows, highlighting the next window
+			self.gui.clearWarning(self.warningY, self.warningX)
+			curWin = self.gui.getWin(self.tab.tab)
+			self.tab.prevTab()
+			newWin = self.gui.getWin(self.tab.tab)
+			curWin.modified = True
+			newWin.modified = True
+
+	def processEnter(self):
+		if self.tab.tab == self.gui.getMap('selectUsers'):
+			self._swapEvent('selectedUsers')
+		elif self.tab.tab == self.gui.getMap('selectedUsers'):
+			self._swapEvent('selectUsers')
+		elif self.tab.tab == self.gui.getMap('submit'):
+			self.submitRequest()
+		elif self.tab.tab == self.gui.getMap('exit'):
+			self.gui.close()
+			exit()
+
+	def _swapEvent(self, appendWin):
+		"""
+		On enter inside a field, an event occurs.
+		Wrapped in a try..except to prevent values that are no longer in the list from being removed
+
+		Parameters
+		removes - the list to remove the value from
+		appends - the list to append the value to
+		value - the specific value that should be removed and appended
+		"""
+		removeWin = self.gui.getWin(self.tab.tab)
+		addIndex = self.gui.getMap(appendWin)
+		addWin = self.gui.getWin(addIndex)
+		value = removeWin.getSelectedValue()
+		try:
+			removeWin.items.remove(value)
+			addWin.items.append(value)
+		except:
+			pass
+		removeWin.changeSelection(0)
+		addWin.changeSelection(0)
+
+	def submitRequest(self):
+		self.gui.addNotification(self.warningY, self.warningX, "Processing request...", 5)
+		curWin = self.gui.getWin(self.tab.tab)
+		curWin.modified = True
+		
+		if self.calcTimesSlots():
+			self.tab.tab = self.tab.maxTab
+			pass
+		else:
+			curWin.modified = False
+		self.gui.addNotification(self.warningY, self.warningX, "Finished!!", 1)
+
+	def calcTimesSlots(self):
+				# process the event
+				service = connection()
+				userNames = []
+				people = []
+				#############################################################
+				#															#
+				# This line will require SIGNIFICANT error checking:		#
+				# -ensure the end date and time are after the start 		#
+				# -odd days of the month? 30t of feb, 31 of Nov, etc        #
+				# -edge cases 												#
+				# -years?													#
+				#															#
+				#############################################################
+				start, stop, length, userNames = self.gui.getStates()
+				#############################################################
+				#															#
+				# Start the integration with the interface for the calendar #
+				# api and other functions.                                  #
+				# Need to work on the interface to automatically add events #
+				# that are pulled from database, no need to do it here.     #
+				#															#
+				#############################################################
+				for user in userNames:
+				 	people.append(person(user, length, service.service))
+
+				# create a meeting object that will hold availability information for the group
+				newMeeting = meeting(start, stop, length, people)
+				# run algorithm to find available time slots
+				newMeeting.availInTimeSlot()
+				times = []
+				# no need to access directly
+				for x in newMeeting.availableTimes:
+					# user friendly format
+					times.append(printTime(x) + " - "+ printTime(x + length))
+				# check if we have already polled results, if so, then just modify that structure
+				try:
+					index = self.gui.getMap('results')
+				except:
+					index = 0
+
+				if index:
+					resultsWin = self.gui.getWin(index)
+					resultsWin.changeItems(times)
+				else:
+					self.gui.addLabel(3,64,"Available Times")
+					maxSize = len(times) + 1
+					if len(times) > 50:
+						maxSize = 50
+
+					self.gui.windows.append(listWindow(self.gui.screen, maxSize + 2, 23, 6, 60, times, self.tab.incTab(), True, True))
+					self.gui.mapWindows.append({'results':self.tab.maxTab})
+
+				date = self.gui.getDate('startDate')
+				self.gui.addLabel(4,67,date, color=4)				
+				return True
 
 if __name__ == "__main__":
 	# Test structures
@@ -615,8 +562,11 @@ if __name__ == "__main__":
 	selected = []
 	users = ['burrows.danny@gmail.com', 'jonesjo@onid.oregonstate.edu', 'clampitl@onid.oregonstate.edu', 'jjames83@gmail.com']
 
-	scenario = 3
+	scenario = timeSlots()
+	scenario.mainLoop()
 
-	if scenario == 3:
-		displayTimeSlots()
+	# scenario = 3
+
+	# if scenario == 3:
+	# 	displayTimeSlots()
 		#calcTimeSlots()
