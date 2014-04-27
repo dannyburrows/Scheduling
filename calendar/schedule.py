@@ -44,7 +44,7 @@ class timeFrame:
 		 
 		# Listing windows
 		self.gui.addLabel(5,6," Select Users ")
-		self.gui.windows.append(listWindow(self.gui.screen, 16, 40, 7, 4, users, self.tab.maxTab, True, True))
+		self.gui.windows.append(listWindow(self.gui.screen, 16, 40, 7, 4, self.users, self.tab.maxTab, True, True))
 		self.gui.mapWindows.append({'selectUsers':self.tab.maxTab})
 
 		self.gui.addLabel(24,6," Currently Selected ")
@@ -102,7 +102,6 @@ class timeFrame:
 		self.gui.windows.append(button(self.gui.screen,1,44,"E(x)it",self.tab.incTab()))
 		self.gui.mapWindows.append({'exit':self.tab.maxTab})
 
-
 	def mainLoop(self):
 		while True:
 			event = self.gui.screen.getch()
@@ -123,6 +122,8 @@ class timeFrame:
 				self._addDateTime()
 			elif event == ord("q"):
 				self.submitRequest()
+			elif event == ord("b"):
+				self._goBack()
 				#for x in self.dates:
 				#	print x
 				#print str(len(self.dates))
@@ -135,11 +136,6 @@ class timeFrame:
 		activeWin = self.gui.getWin(self.tab.tab)
 		if activeWin.scrollable == False:
 			self.gui.addNotification(self.warningY, self.warningX, "Cannot modify value",5)
-		elif self.tab.tab == self.gui.getMap('startDateM') or self.tab.tab == self.gui.getMap('startDateD') or self.tab.tab == self.gui.getMap('startDateY'):
-			try:
-				activeWin.changeSelection(direction)	
-			except:
-				pass
 		else:
 			try:
 				activeWin.changeSelection(direction)
@@ -164,7 +160,15 @@ class timeFrame:
 			curWin.modified = True
 			newWin.modified = True
 
+	def _goBack(self):
+		# back to original screen
+		self.gui.cleanGUI()
+		mainGui().mainLoop()
+
 	def processEnter(self):
+		"""
+		Caught and Enter key, determine what to do with it
+		"""
 		if self.tab.tab == self.gui.getMap('selectUsers'):
 			self._swapEvent('selectedUsers')
 		elif self.tab.tab == self.gui.getMap('selectedUsers'):
@@ -175,13 +179,26 @@ class timeFrame:
 			self.gui.close()
 			exit()
 		elif self.tab.tab == self.gui.getMap('back'):
-			self.gui.cleanGUI()
-			mainGui().mainLoop()
+			self._goBack()
 		elif self.tab.tab == self.gui.getMap('addSlot'):
 			self._addDateTime()
+		elif self.tab.tab == self.gui.getMap('timeDates'):
+			self._removeTime()
+
+	def _removeTime(self):
+		"""
+		"""
+		index = self.gui.getMap('timeDates')
+		slotWin = self.gui.getWin(index)
+		value = slotWin.getSelectedValue()
+		self.dates.remove(value)
+		slotWin.changeSelection(0)
 
 	def _addDateTime(self):
-		start, stop, length, names = self.gui.getStates()
+		"""
+		Adds the current time to the dates array.
+		"""
+		start, stop, length = self.gui.getStates()
 		temp = {'start': start, 'stop': stop, 'length': length}
 		#self.dates.append({'start': start, 'stop': stop, 'length': length})
 		year,date,startMins = getCorrectedTime(start)
@@ -223,12 +240,14 @@ class timeFrame:
 		"""
 		Prepares to query the calendar API and determine the available times.
 		"""
+		# error catching
 		if not self.selected:
 			self.gui.addNotification(self.warningY, self.warningX, "No users selected", 5)
 			return
 		if not self.dates:
 			self.gui.addNotification(self.warningY, self.warningX, "No date/times selected", 5)
 			return
+
 		self.gui.addNotification(self.warningY, self.warningX, "Processing request...", 5)
 		curWin = self.gui.getWin(self.tab.tab)
 		curWin.modified = True
@@ -325,6 +344,9 @@ class timeFrame:
 		return True
 
 class resultGui:
+	"""
+	Draws the window with the list of results from the queries
+	"""
 	def __init__(self, dates):
 		self.dates = dates
 		self.gui = GUI()
@@ -358,6 +380,9 @@ class resultGui:
 
 
 class mainGui:
+	"""
+	Main landing page for user to choose what to do
+	"""
 	def __init__(self):
 		self.gui = GUI()
 		self.tab = tabstop()

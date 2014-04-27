@@ -63,6 +63,7 @@ class GUI:
 		"""
 		Closes the GUI window and resets terminal control.
 		"""
+		self.cleanGUI()
 		self.screen.erase()
 		curses.nocbreak()
 		self.screen.keypad(0)
@@ -102,14 +103,26 @@ class GUI:
 			offset = 12 - len(input) # 12 is ~arbitrary based on the locations currently being used, this can be modified
 		self.screen.addstr(y, x + offset, input, curses.color_pair(color))
 
-	def addNotification(self, y, x, input, color):
+	def addNotification(self, y, x, input, color=5):
+		"""
+		Adds a notification to the screen to inform the user of a status or event
+
+		Parameters:
+		y - row coordinate on larger window object to display
+		x - column coordinate
+		input - the warning message to display
+		color - the color of the warning, defaulted to red
+		"""
 		self.clearWarning(y,x)
 		self.screen.addstr(y,x, input, curses.color_pair(color))
 		self.screen.refresh()
 
 	def clearWarning(self, y, x):
+		"""
+		Removes the warning message
+		"""
 		self.screen.move(y,x)
-		self.screen.clrtoeol()
+		self.screen.clrtoeol() # clears to the end of the line, this will remove items in between cursor and end of line, be careful
 		self.screen.box()
 
 	def getStates(self):
@@ -118,10 +131,10 @@ class GUI:
 		"""
 		# get the values for everything on the board
 		# compose indices and prep for ouput
-		userNames = []							# will hold the list of users that has been selected
+		#userNames = []							# will hold the list of users that has been selected
 		index = self.getMap('selectedUsers')		# the index (tabstop) for the people the user has selected to query
-		for x in self.windows[index].items:		
-			userNames.append(x)
+		#for x in self.windows[index].items:		
+		#	userNames.append(x)
 		startDate = self.getDate("startDate")	# gets the starting date, in a standard format MM/DD/YYYY
 		if self.winExists('endDateM'):
 			endDate = self.getDate("endDate")	# gets ending date
@@ -132,7 +145,7 @@ class GUI:
 		length = self.windows[self.getMap('length')].getSelectedValue() # gets the length attribute
 		start = startDate + " " + startTime		# create the date time string that the interface is expecting
 		end = endDate + " " + endTime
-		return start, end, int(length), userNames
+		return start, end, int(length)#, userNames
 
 	def winExists(self,input):
 		if input in self.mapWindows[0]:
@@ -190,8 +203,8 @@ class GUIPad:
 
 class button(GUIPad):
 	def __init__(self, screen, y, x, text, tab, box=True, highlighted=True):
-		width = len(text) + 4
-		height = 3
+		width = len(text) + 4 # dynamic size of button
+		height = 3 # basic height of button
 		GUIPad.__init__(self, screen, height, width, y, x, tab, highlighted)
 		self.box = box 	# tracks whether the pad should be boxed or not
 		self.text = text
@@ -220,6 +233,8 @@ class button(GUIPad):
 class listWindow(GUIPad):
 	"""
 	A child class of the GUIPad. Provides additional functionality, ties a list to the window, handles display and interaction
+
+	A parent class of timeWindow and dateWindow.
 	"""
 	def __init__(self, screen, height, width, y, x, items, tab, box=True, highlighted=False):
 		GUIPad.__init__(self, screen, height, width, y, x, tab, highlighted)
@@ -244,6 +259,7 @@ class listWindow(GUIPad):
 
 		Parameters
 		focus - if this object is the location of the current tabstop, provide option to move the values
+		highlight - whether this object should light up when it is being focused or not
 		"""
 		if not self.modified:
 			return
@@ -307,19 +323,10 @@ class listWindow(GUIPad):
 		except:
 			return None
 
-class timeWindow(GUIPad):
+class timeWindow(listWindow):
 	"""
-	A child of the GUIPad class. Allows indexing of multiple windows to one tab, displaying only the currently highlighted window.
+	A child of the listWindow class. Expects an array of dictionaries.
 	"""
-	def __init__(self, screen, height, width, y, x, dates, tab, box=True, highlighted=False):
-		GUIPad.__init__(self, screen, height, width, y, x, tab, highlighted)
-		self.index = 0
-		self.scrollable = True
-		self.box = box
-		# dates is an array of tuples, taking the type: { 'date': 'MM/DD/YYYY', 'start': 'HH:MM', 'stop': 'HH:MM' }
-		self.items = dates
-		self.selection = 0
-
 	def listItems(self, focus = False, highlight = False):
 		"""
 		Displays the dates and times of the dates array in this object.
@@ -353,35 +360,18 @@ class timeWindow(GUIPad):
 		self.modified = False
 
 	def _getStringDateTime(self, index):
+		"""
+		Returns a readable string with times that are going to be checked
+		"""
 		return (( str(self.items[index]['start']) + ' - ' + str(self.items[index]['stop']) + ' : ' + str(self.items[index]['length']) + ' mins'))
 
-	def changeSelection(self, direction):
-		"""
-		Modifies the current selection of the list 
 
-		Parameters
-		direction - -1 for up, +1 for down, 0 to reset after an event
-		"""
-		self.modified = True
-		self.selection = self.selection + direction
-		# correct for going out of bounds
-		if self.selection == len(self.items):
-			self.selection = 0
-		if self.selection == -1:
-			self.selection = len(self.items) - 1
-		return True
-
-class dateWindow(GUIPad):
+class dateWindow(listWindow):
 	"""
-	A child of the GUIPad class. Allows indexing of multiple windows to one tab, displaying only the currently highlighted window.
+	A child of the listWindow class. Allows indexing of multiple windows to one tab, displaying only the currently highlighted window.
 	"""
-	def __init__(self, screen, height, width, y, x, dates, tab, box=True, highlighted=False):
-		GUIPad.__init__(self, screen, height, width, y, x, tab, highlighted)
-		self.scrollable = True
-		self.box = box
-		# dates is an array of tuples, taking the type: { 'date': 'MM/DD/YYYY', 'times': ['MM:HH'] }
-		self.items = dates
-		self.selection = 0
+	def __init__(self, screen, height, width, y, x, items, tab, box=True, highlighted=False):
+		listWindow.__init__(self, screen, height, width, y, x, items, tab, box, highlighted)
 		self.focus = 0
 
 	def listItems(self, focus = False, highlight = False):
@@ -415,24 +405,11 @@ class dateWindow(GUIPad):
 			self.pad.box()
 		self.pad.refresh() # redraw the pad
 		self.modified = False
-	
-	def changeSelection(self, direction):
-		"""
-		Modifies the current selection of the list 
-
-		Parameters
-		direction - -1 for up, +1 for down, 0 to reset after an event
-		"""
-		self.modified = True
-		self.selection = self.selection + direction
-		# correct for going out of bounds
-		if self.selection == len(self.items):
-			self.selection = 0
-		if self.selection == -1:
-			self.selection = len(self.items) - 1
-		return True
 
 	def changeFocus(self, direction):
+		"""
+		Changes which array index is being viewed. Allows multiple windows to be indexed to one tabstop.
+		"""
 		self.modified = True
 		self.focus = self.focus + direction
 		if self.focus == len(self.items):
@@ -442,20 +419,32 @@ class dateWindow(GUIPad):
 		return True
 
 class tabstop:
+	"""
+	The tab class. Used to help manuevering through the windows on the curses pad.
+	"""
 	def __init__(self):
 		self.tab = 0
 		self.maxTab = 0
 
 	def nextTab(self):
+		"""
+		Move the tab stop up one
+		"""
 		self.tab = self.tab + 1
 		if self.tab > self.maxTab:
 			self.tab = 0
 
 	def prevTab(self):
+		"""
+		Move the tab stop down one
+		"""
 		self.tab = self.tab - 1
 		if self.tab < 0:
 			self.tab = self.maxTab
 
 	def incTab(self):
+		"""
+		Used to increase the maximum amount of tabs
+		"""
 		self.maxTab = self.maxTab + 1
 		return self.maxTab
