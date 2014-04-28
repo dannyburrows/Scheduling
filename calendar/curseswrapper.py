@@ -15,12 +15,14 @@ class GUI:
 		curses.curs_set(0) # removes cursor from screen
 		self.screen.keypad(1) # captures keypresses
 		curses.start_color()
-
+		
 		curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_GREEN)
 		curses.init_pair(2, curses.COLOR_BLACK, curses.COLOR_YELLOW)
 		curses.init_pair(3, curses.COLOR_WHITE, curses.COLOR_MAGENTA)
 		curses.init_pair(4, curses.COLOR_WHITE, curses.COLOR_BLACK)
 		curses.init_pair(5, curses.COLOR_WHITE, curses.COLOR_RED)
+
+		self.screen.bkgd(curses.color_pair(4))
 
 	def drawGUI(self):
 		"""
@@ -325,11 +327,20 @@ class listWindow(GUIPad):
 
 class timeWindow(listWindow):
 	"""
-	A child of the listWindow class. Expects an array of dictionaries.
+	A child class of the GUIPad. Provides additional functionality, ties a list to the window, handles display and interaction
+
+	A parent class of timeWindow and dateWindow.
 	"""
-	def listItems(self, focus = False, highlight = False):
+	def __init__(self, screen, height, width, y, x, items, tab, box=True, highlighted=False):
+		listWindow.__init__(self, screen, height, width, y, x, items, tab, box, highlighted)
+
+	def listItems(self, focus = False, highlight=False):
 		"""
-		Displays the dates and times of the dates array in this object.
+		Display the tied list of this object. Paginates based on the height of the pad and the length of the list.
+
+		Parameters
+		focus - if this object is the location of the current tabstop, provide option to move the values
+		highlight - whether this object should light up when it is being focused or not
 		"""
 		# stops from updating unnecessarily
 		if not self.modified:
@@ -365,13 +376,12 @@ class timeWindow(listWindow):
 		"""
 		return (( str(self.items[index]['start']) + ' - ' + str(self.items[index]['stop']) + ' : ' + str(self.items[index]['length']) + ' mins'))
 
-
 class dateWindow(listWindow):
 	"""
 	A child of the listWindow class. Allows indexing of multiple windows to one tab, displaying only the currently highlighted window.
 	"""
 	def __init__(self, screen, height, width, y, x, items, tab, box=True, highlighted=False):
-		listWindow.__init__(self, screen, height, width, y, x, items, tab, box, highlighted)
+		listWindow.__init__(self, screen, height, width, y, x, items, tab, highlighted)
 		self.focus = 0
 
 	def listItems(self, focus = False, highlight = False):

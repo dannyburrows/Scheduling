@@ -53,7 +53,7 @@ class timeFrame:
 
 		# Will hold selected dates
 		self.gui.addLabel(43,6," Added Dates and Times ")
-		self.gui.windows.append(timeWindow(self.gui.screen, 16, 50, 45, 4, self.dates, self.tab.incTab(), True, True))
+		self.gui.windows.append(timeWindow(self.gui.screen, 10, 50, 45, 4, self.dates, self.tab.incTab(), True, True))
 		self.gui.mapWindows.append({'timeDates':self.tab.maxTab})
 
 		# Variables
@@ -411,7 +411,7 @@ class mainGui:
 	def mainLoop(self):
 		while True:
 			event = self.gui.screen.getch()
-			if event == ord('q'):
+			if event == ord('x'):
 				self.gui.close()
 				exit()
 			elif event == curses.KEY_DOWN or event == ord('\t'):
@@ -466,16 +466,8 @@ if __name__ == "__main__":
 	users = ['burrows.danny@gmail.com', 'jonesjo@onid.oregonstate.edu', 'clampitl@onid.oregonstate.edu', 'jjames83@gmail.com']
 	#users = [ x for x in range(0,50)]
 
-	testDates = []
-
-	testDates.append({ 'date': '04/26/2014', 'times':['12:00','12:30','1:00','1:30']})
-	testDates.append({ 'date': '04/27/2014', 'times':['1:00','2:30','4:00','5:30']})
-
-	#print testDates
-	# test = GUI()
-	# test.windows.append(timeWindow( test.screen, 20, 20, 5, 3, testDates, 0))
-	# test.redrawGUI(0)
-	# event = test.screen.getch()
-	# test.close()
+	# testDates = []
+	# testDates.append({ 'date': '04/26/2014', 'times':['12:00','12:30','1:00','1:30']})
+	# testDates.append({ 'date': '04/27/2014', 'times':['1:00','2:30','4:00','5:30']})
 
 	mainGui().mainLoop()
