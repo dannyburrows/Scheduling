@@ -27,6 +27,7 @@ class timeFrame:
 		self.tab = tabstop()
 		self.selected = []
 		self.users = ['burrows.danny@gmail.com', 'jonesjo@onid.oregonstate.edu', 'clampitl@onid.oregonstate.edu', 'jjames83@gmail.com']
+		#self.users = [x for x in range(0, 40)]
 		# will hold the dates to check for multiple dates and times
 		# array of tuples, taking the type: { 'date': 'MM/DD/YYYY', 'times': ['MM:HH'] }
 		self.dates = []
@@ -89,6 +90,10 @@ class timeFrame:
 		self.gui.windows.append(listWindow(self.gui.screen, 3, 8, y+13, x+12, lengths, self.tab.incTab(), False))
 		self.gui.mapWindows.append({'length':self.tab.maxTab})
 
+		# test input
+		# self.gui.windows.append(inputBox(self.gui.screen, 3, 70, 40, self.tab.incTab()))
+		# self.gui.mapWindows.append({'input': self.tab.maxTab})
+
 		# Buttons
 		self.gui.windows.append(button(self.gui.screen,1,1,"(A)dd Time Slot",self.tab.incTab()))
 		self.gui.mapWindows.append({'addSlot':self.tab.maxTab})
@@ -104,6 +109,17 @@ class timeFrame:
 
 	def mainLoop(self):
 		while True:
+			# if self.tab.tab == self.gui.getMap('input'):			
+			# 	index = self.gui.getMap('input')
+			# 	win = self.gui.getWin(index)
+			# 	#print win
+			# 	y,x,length = win.inputParams()
+			# 	curses.echo()
+			# 	text = self.gui.screen.getstr(y,x, length)
+			# 	#print text
+			# 	self._moveTab(+1)
+			# 	curses.noecho()
+			# else:
 			event = self.gui.screen.getch()
 			if event == ord("x"):
 				self.gui.close()

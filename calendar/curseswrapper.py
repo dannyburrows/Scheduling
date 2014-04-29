@@ -203,6 +203,32 @@ class GUIPad:
 		window = self.screen.subpad(height, width, y, x)
 		return window
 
+class inputBox(GUIPad):
+	def __init__(self, screen, y, x, width, tab, box=True, highlighted=True):
+		height = 3
+		GUIPad.__init__(self, screen, height, width, y, x, tab, highlighted)
+		self.box = box
+		self.scrollable = False
+		self.length = width - 2
+		self.x = x
+		self.y = y
+
+	def inputParams(self):
+		return (self.y + 1, self.x + 1, self.length)
+
+	def listItems(self, focus = False, highlight = False):
+		if not self.modified:
+			return
+		self.pad.clear()
+		if highlight:
+			self.pad.bkgd(curses.color_pair(3))
+		else:
+			self.pad.bkgd(curses.color_pair(4))
+		if self.box:
+			self.pad.box()
+		self.pad.refresh()
+		self.modified = False
+
 class button(GUIPad):
 	def __init__(self, screen, y, x, text, tab, box=True, highlighted=True):
 		width = len(text) + 4 # dynamic size of button
