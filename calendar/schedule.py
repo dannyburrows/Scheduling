@@ -26,100 +26,91 @@ class timeFrame:
 		self.gui.mapWindows = []
 		self.tab = tabstop()
 		self.selected = []
-		self.users = ['burrows.danny@gmail.com', 'jonesjo@onid.oregonstate.edu', 'clampitl@onid.oregonstate.edu', 'jjames83@gmail.com']
+		#self.users = ['burrows.danny@gmail.com', 'jonesjo@onid.oregonstate.edu', 'clampitl@onid.oregonstate.edu', 'jjames83@gmail.com']
 		#self.users = [x for x in range(0, 40)]
 		# will hold the dates to check for multiple dates and times
 		# array of tuples, taking the type: { 'date': 'MM/DD/YYYY', 'times': ['MM:HH'] }
 		self.dates = []
 		self.warningY = 28
-		self.warningX = 50
+		self.warningX = 65
 		self.buildWindows()
 		self.tab.tab = 0
-		self.gui.drawGUI()
+		self.gui.drawGUI(self.tab)
+		self.setSelections()
 		self.gui.redrawGUI(self.tab.tab)
 
+	def setSelections(self):
+		now = datetime.now()
+		day = int(now.strftime("%d"))
+		month = int(now.strftime("%m"))
+		year = int(now.strftime("%Y"))
+		win = self.gui.getWin('startDateM')
+		win.selection = (month - 1)
+		win = self.gui.getWin('startDateD')
+		win.selection = (day - 1)
+		win = self.gui.getWin('startH')
+		win.selection = 8
+		win = self.gui.getWin('endH')
+		win.selection = 18
+		win = self.gui.getWin('length')
+		win.selection = 3
+
+
 	def buildWindows(self):
+		# quickly allows me to move the entirety of the input UI
 		y = 8
-		x = 50
+		x = 60
 		# add all the windows that will contain lists of information
 		 
 		# Listing windows
-		self.gui.addLabel(5,6," Select Users ")
-		self.gui.windows.append(listWindow(self.gui.screen, 16, 40, 7, 4, self.users, self.tab.maxTab, True, True))
-		self.gui.mapWindows.append({'selectUsers':self.tab.maxTab})
+		#self.gui.addLabel(5,6," Select Users ")
+		#self.gui.addUIElement('list', 'selectedUsers', self.tab, 16, 40, 7, 4, self.selected, True, True)
 
-		self.gui.addLabel(24,6," Currently Selected ")
-		self.gui.windows.append(listWindow(self.gui.screen, 16, 40, 26, 4, self.selected, self.tab.incTab(), True, True))
-		self.gui.mapWindows.append({'selectedUsers':self.tab.maxTab})
+		self.gui.addLabel(6, 6, " Enter a username ")
+		self.gui.addUIElement('input', 'inputUser', self.tab, y=8, x=4, width=50)
 
-		# Will hold selected dates
-		self.gui.addLabel(43,6," Added Dates and Times ")
-		self.gui.windows.append(timeWindow(self.gui.screen, 10, 50, 45, 4, self.dates, self.tab.incTab(), True, True))
-		self.gui.mapWindows.append({'timeDates':self.tab.maxTab})
+		self.gui.addLabel(14,6," Currently Selected ")
+		self.gui.addUIElement('list', 'selectedUsers', self.tab, 16, 50, 16, 4, self.selected, True, True)
 
 		# Variables
 		self.gui.addLabel(y, x+14, "MM / DD / YYYY", color=4)
-		self.gui.addLabel(y+2, x,"Start date:","right")
-		self.gui.windows.append(listWindow(self.gui.screen, 3, 6, y+1, x+12, months, self.tab.incTab(), False))
-		self.gui.mapWindows.append({'startDateM':self.tab.maxTab})
+		self.gui.addLabel(y+2, x," Start date: ","right")
+		self.gui.addUIElement('list', 'startDateM', self.tab, 3, 6, y+1, x+12, months, False, False)
 
-		self.gui.windows.append(listWindow(self.gui.screen, 3, 6, y+1, x+17, days, self.tab.incTab(), False))
-		self.gui.mapWindows.append({'startDateD':self.tab.maxTab})
+		self.gui.addUIElement('list', 'startDateD', self.tab, 3, 6, y+1, x+17, days, False, False)
+		self.gui.addUIElement('list', 'startDateY', self.tab, 3, 6, y+1, x+22, years, False, False)
 
-		self.gui.windows.append(listWindow(self.gui.screen, 3, 8, y+1, x+22, years, self.tab.incTab(), False))
-		self.gui.mapWindows.append({'startDateY':self.tab.maxTab})
+		self.gui.addLabel(y+4,x+14,"HH : MM",color=4)
+		self.gui.addLabel(y+6,x," Start time: ","right")
+		self.gui.addUIElement('list', 'startH', self.tab, 3, 6, y+5, x+12, hours, False, False)
 
-		self.gui.addLabel(y+4,x+14,"MM : HH",color=4)
-		self.gui.addLabel(y+6,x,"Start time:","right")
-		self.gui.windows.append(listWindow(self.gui.screen, 3, 6, y+5, x+12, hours, self.tab.incTab(), False))
-		self.gui.mapWindows.append({'startH':self.tab.maxTab})
+		self.gui.addUIElement('list', 'startM', self.tab, 3, 8, y+5, x+16, mins, False, False)
+		self.gui.addLabel(y+8,x+14,"HH : MM",color=4)
+		self.gui.addLabel(y+10,x," End time: ","right")
+		self.gui.addUIElement('list', 'endH', self.tab, 3, 6, y+9, x+12, hours, box=False, highlighted=False)
 
-		self.gui.windows.append(listWindow(self.gui.screen, 3, 8, y+5, x+16, mins, self.tab.incTab(), False))
-		self.gui.mapWindows.append({'startM':self.tab.maxTab})
-
-		self.gui.addLabel(y+8,x+14,"MM : HH",color=4)
-		self.gui.addLabel(y+10,x,"End time:","right")
-		self.gui.windows.append(listWindow(self.gui.screen, 3, 6, y+9, x+12, hours, self.tab.incTab(), False))
-		self.gui.mapWindows.append({'endH':self.tab.maxTab})
-
-		self.gui.windows.append(listWindow(self.gui.screen, 3, 8, y+9, x+16, mins,self.tab.incTab(), False))
-		self.gui.mapWindows.append({'endM':self.tab.maxTab})
+		self.gui.addUIElement('list', 'endM', self.tab, 3, 8, y+9, x+16, mins, False, False)
 
 		self.gui.addLabel(y+12,x+14,"Mins", color=4)
-		self.gui.addLabel(y+14,x,"Length:","right")
-		self.gui.windows.append(listWindow(self.gui.screen, 3, 8, y+13, x+12, lengths, self.tab.incTab(), False))
-		self.gui.mapWindows.append({'length':self.tab.maxTab})
+		self.gui.addLabel(y+14,x," Length: ","right")
+		self.gui.addUIElement('list', 'length', self.tab, 3, 8, y+13, x+12, lengths, False, False)
+
+		# Will hold selected dates
+		self.gui.addLabel(10,102," Added Dates and Times ")
+		self.gui.addUIElement('timeWin', 'timeDates', self.tab, 10, 50, 12, 100, self.dates, True, True)
 
 		# test input
-		# self.gui.windows.append(inputBox(self.gui.screen, 3, 70, 40, self.tab.incTab()))
+		# self.gui.windows.append(inputBox(3, 70, 40, self.tab.incTab()))
 		# self.gui.mapWindows.append({'input': self.tab.maxTab})
 
 		# Buttons
-		self.gui.windows.append(button(self.gui.screen,1,1,"(A)dd Time Slot",self.tab.incTab()))
-		self.gui.mapWindows.append({'addSlot':self.tab.maxTab})
-
-		self.gui.windows.append(button(self.gui.screen,1,21,"(Q)uery",self.tab.incTab()))
-		self.gui.mapWindows.append({'submit':self.tab.maxTab})
-
-		self.gui.windows.append(button(self.gui.screen,1,33,"(B)ack",self.tab.incTab()))
-		self.gui.mapWindows.append({'back':self.tab.maxTab})
-
-		self.gui.windows.append(button(self.gui.screen,1,44,"E(x)it",self.tab.incTab()))
-		self.gui.mapWindows.append({'exit':self.tab.maxTab})
+		self.gui.addUIElement('button', 'addSlot', self.tab, y=1, x=1, text='(A)dd Time Slot')
+		self.gui.addUIElement('button', 'submit', self.tab, y=1, x=21, text='(Q)uery')
+		self.gui.addUIElement('button', 'back', self.tab, y=1, x=33, text='(B)ack')
+		self.gui.addUIElement('button', 'exit', self.tab, y=1, x=44, text='E(x)it')
 
 	def mainLoop(self):
 		while True:
-			# if self.tab.tab == self.gui.getMap('input'):			
-			# 	index = self.gui.getMap('input')
-			# 	win = self.gui.getWin(index)
-			# 	#print win
-			# 	y,x,length = win.inputParams()
-			# 	curses.echo()
-			# 	text = self.gui.screen.getstr(y,x, length)
-			# 	#print text
-			# 	self._moveTab(+1)
-			# 	curses.noecho()
-			# else:
 			event = self.gui.screen.getch()
 			if event == ord("x"):
 				self.gui.close()
@@ -149,7 +140,7 @@ class timeFrame:
 	def _processUpDown(self, direction):
 		# find which window we're in and modify that value
 		# move the index back 1
-		activeWin = self.gui.getWin(self.tab.tab)
+		activeWin = self.gui.getTab(self.tab.tab)
 		if activeWin.scrollable == False:
 			self.gui.addNotification(self.warningY, self.warningX, "Cannot modify value",5)
 		else:
@@ -162,17 +153,17 @@ class timeFrame:
 		if direction == +1:
 			# move the tabstop and redraw windows, highlighting the next window
 			self.gui.clearWarning(self.warningY, self.warningX)
-			curWin = self.gui.getWin(self.tab.tab)
+			curWin = self.gui.getTab(self.tab.tab)
 			self.tab.nextTab()
-			newWin = self.gui.getWin(self.tab.tab)
+			newWin = self.gui.getTab(self.tab.tab)
 			newWin.modified = True
 			curWin.modified = True
 		elif direction == -1:
 			# move the tabstop and redraw windows, highlighting the next window
 			self.gui.clearWarning(self.warningY, self.warningX)
-			curWin = self.gui.getWin(self.tab.tab)
+			curWin = self.gui.getTab(self.tab.tab)
 			self.tab.prevTab()
-			newWin = self.gui.getWin(self.tab.tab)
+			newWin = self.gui.getTab(self.tab.tab)
 			curWin.modified = True
 			newWin.modified = True
 
@@ -185,10 +176,11 @@ class timeFrame:
 		"""
 		Caught and Enter key, determine what to do with it
 		"""
-		if self.tab.tab == self.gui.getMap('selectUsers'):
-			self._swapEvent('selectedUsers')
-		elif self.tab.tab == self.gui.getMap('selectedUsers'):
-			self._swapEvent('selectUsers')
+		#if self.tab.tab == self.gui.getMap('selectUsers'):
+		#	self._swapEvent('selectedUsers')
+		if self.tab.tab == self.gui.getMap('selectedUsers'):
+			self._removeUser()
+			#self._swapEvent('selectUsers')
 		elif self.tab.tab == self.gui.getMap('submit'):
 			self.submitRequest()
 		elif self.tab.tab == self.gui.getMap('exit'):
@@ -200,14 +192,28 @@ class timeFrame:
 			self._addDateTime()
 		elif self.tab.tab == self.gui.getMap('timeDates'):
 			self._removeTime()
+		elif self.tab.tab == self.gui.getMap('inputUser'):
+			self._getInput()
+
+	def _removeUser(self):
+		userWin = self.gui.getWin('selectedUsers')
+		value = userWin.getSelectedValue()
+		try:
+			self.selected.remove(value)
+		except:
+			self.gui.addNotification(self.warningY, self.warningX, "No users to remove", 5)
+		userWin.changeSelection(0)
 
 	def _removeTime(self):
 		"""
 		"""
-		index = self.gui.getMap('timeDates')
-		slotWin = self.gui.getWin(index)
+		#index = self.gui.getMap('timeDates')
+		slotWin = self.gui.getWin('timeDates')
 		value = slotWin.getSelectedValue()
-		self.dates.remove(value)
+		try:
+			self.dates.remove(value)
+		except:
+			self.gui.addNotification(self.warningY, self.warningX, "No values to remove", 5)
 		slotWin.changeSelection(0)
 
 	def _addDateTime(self):
@@ -219,13 +225,13 @@ class timeFrame:
 		#self.dates.append({'start': start, 'stop': stop, 'length': length})
 		year,date,startMins = getCorrectedTime(start)
 		year,date,endMins = getCorrectedTime(stop)
-		if startMins > endMins:
+		if startMins >= endMins:
 			self.gui.addNotification(self.warningY, self.warningX, "Check your start and end times", 5)
 			return
 		if temp not in self.dates:
 			self.dates.append(temp)
-			datesTab = self.gui.getMap('timeDates')
-			changeWin = self.gui.getWin(datesTab)
+			#datesTab = self.gui.getMap('timeDates')
+			changeWin = self.gui.getWin('timeDates')
 			changeWin.changeSelection(0)
 		else:
 			self.gui.addNotification(self.warningY, self.warningX, "Date and time already added", 5)
@@ -240,9 +246,9 @@ class timeFrame:
 		appends - the list to append the value to
 		value - the specific value that should be removed and appended
 		"""
-		removeWin = self.gui.getWin(self.tab.tab)
+		removeWin = self.gui.getTab(self.tab.tab)
 		addIndex = self.gui.getMap(appendWin)
-		addWin = self.gui.getWin(addIndex)
+		addWin = self.gui.getTab(addIndex)
 		value = removeWin.getSelectedValue()
 		try:
 			removeWin.items.remove(value)
@@ -251,6 +257,33 @@ class timeFrame:
 			pass
 		removeWin.changeSelection(0)
 		addWin.changeSelection(0)
+
+	def _getInput(self):
+		win = self.gui.getWin('inputUser')
+		# takes away the highlighted background and refreshes the screen
+		win.highlighted = False
+		win.modified = True
+		self.gui.redrawGUI(self.tab.tab)
+		# get the location of the input box, and the length of the box
+		y,x,length = win.inputParams()
+		# turn on charatcer typing and make the cursor visible
+		curses.echo()
+		curses.curs_set(2)
+		# places the cursor at the beginning of the box, restricting the size to 1 less than the box
+		# it is important to ensure we have enough space to type the entire email
+		text = self.gui.screen.getstr(y, x, length)
+		# turn off character displays and turn the cursor off
+		curses.noecho()
+		curses.curs_set(0)
+		# change the input back to its original state
+		win.highlighted = True
+		win.modified = True
+		# updates the selected box and prepares for refresh		
+		self.selected.append(text) # return text
+		changeWin = self.gui.getWin('selectedUsers')
+		changeWin.changeSelection(0)
+
+		return True
 
 	def submitRequest(self):
 		"""
@@ -265,7 +298,7 @@ class timeFrame:
 			return
 
 		self.gui.addNotification(self.warningY, self.warningX, "Processing request...", 5)
-		curWin = self.gui.getWin(self.tab.tab)
+		curWin = self.gui.getTab(self.tab.tab)
 		curWin.modified = True
 		
 		if self.calcTimesSlots():
@@ -273,7 +306,7 @@ class timeFrame:
 			pass
 		else:
 			curWin.modified = False
-		self.gui.addNotification(self.warningY, self.warningX, "Finished!!", 1)
+		#self.gui.addNotification(self.warningY, self.warningX, "Finished!!", 1)
 
 	def calcTimesSlots(self):
 		"""
@@ -307,10 +340,13 @@ class timeFrame:
 			# meeting object
 			newMeeting = meeting(date['start'], date['stop'], date['length'], people)
 			# run the algorithms
-			newMeeting.availInTimeSlot()
+			if newMeeting.availInTimeSlot():
 			#{ 'date': 'MM/DD/YYYY', 'times': ['MM:HH'] }
 			# append dates and resulting times
-			finalAvails.append({'date': getDate(date['start']), 'times': newMeeting.availableTimes })
+				finalAvails.append({'date': getDate(date['start']), 'times': newMeeting.availableTimes })
+			else:
+				self.gui.addNotification(self.warningY, self.warningX, "No users were found")
+				return
 
 		# clean the gui, prep to load new window
 		self.gui.cleanGUI()
@@ -344,7 +380,7 @@ class timeFrame:
 		# 	index = 0
 
 		# if index:
-		# 	resultsWin = self.gui.getWin(index)
+		# 	resultsWin = self.gui.getTab(index)
 		# 	resultsWin.changeItems(times)
 		# else:
 		# 	self.gui.addLabel(3,64,"Available Times")
@@ -352,7 +388,7 @@ class timeFrame:
 		# 	if len(times) > 50:
 		# 		maxSize = 50
 
-		# 	self.gui.windows.append(listWindow(self.gui.screen, maxSize + 2, 23, 6, 60, times, self.tab.incTab(), True, True))
+		# 	self.gui.windows.append(listWindow(maxSize + 2, 23, 6, 60, times, self.tab.incTab(), True, True))
 		# 	self.gui.mapWindows.append({'results':self.tab.maxTab})
 
 		# date = self.gui.getDate('startDate')
@@ -374,11 +410,11 @@ class resultGui:
 		self.buildWindows()
 		self.tab.tab = 0
 
-		self.gui.drawGUI()
+		self.gui.drawGUI(self.tab)
 		self.gui.redrawGUI(self.tab.tab)
 
 	def buildWindows(self):
-		self.gui.windows.append(dateWindow(self.gui.screen,50,25,2,2,self.dates,0))
+		self.gui.windows.append(pagedWindow(50, 25, 2, 2, self.dates, 0))
 		self.gui.mapWindows.append({'results': 0})
 
 	def mainLoop(self):
@@ -388,8 +424,8 @@ class resultGui:
 				self.gui.close()
 				exit()
 			elif event == ord("\t") or event == curses.KEY_RIGHT:
-				win = self.gui.getMap('results')
-				win = self.gui.getWin(win)
+				#win = self.gui.getMap('results')
+				win = self.gui.getWin('results')
 				win.changeFocus(+1)
 
 			self.gui.redrawGUI(self.tab.tab)
@@ -409,20 +445,16 @@ class mainGui:
 		self.buildWindows()
 		self.tab.tab = 0
 
-		self.gui.drawGUI()
+		self.gui.drawGUI(self.tab)
 		self.gui.redrawGUI(self.tab.tab)
 	
 	def buildWindows(self):
 		#(self, screen, y, x, text, tab, box=True, highlighted=True):
 		self.gui.addLabel(1, 2, "Scheduling Tool", color=4)
-		self.gui.windows.append(button(self.gui.screen, 6, 8,"Schedule a Meeting", self.tab.maxTab))
-		self.gui.mapWindows.append({'meeting':self.tab.maxTab})
 
-		self.gui.windows.append(button(self.gui.screen, 11, 8,"Search by Time Frame", self.tab.incTab()))
-		self.gui.mapWindows.append({'timeFrame':self.tab.maxTab})
-
-		self.gui.windows.append(button(self.gui.screen, 16, 8,"Search by Users", self.tab.incTab()))
-		self.gui.mapWindows.append({'users':self.tab.maxTab})
+		self.gui.addUIElement('button', 'meeting', self.tab, y=6, x=8, text='Schedule a Meeting')
+		self.gui.addUIElement('button', 'timeFrame', self.tab, y=11, x=8, text='Search by Time Frame')
+		self.gui.addUIElement('button', 'users', self.tab, y=16, x=8, text='Search by Users')
 
 	def mainLoop(self):
 		while True:
@@ -444,15 +476,15 @@ class mainGui:
 		# find which window we're in and modify that value
 		# move the index back 1
 		if direction == +1:
-			curWin = self.gui.getWin(self.tab.tab)
+			curWin = self.gui.getTab(self.tab.tab)
 			self.tab.nextTab()
-			newWin = self.gui.getWin(self.tab.tab)
+			newWin = self.gui.getTab(self.tab.tab)
 			newWin.modified = True
 			curWin.modified = True
 		else:
-			curWin = self.gui.getWin(self.tab.tab)
+			curWin = self.gui.getTab(self.tab.tab)
 			self.tab.prevTab()
-			newWin = self.gui.getWin(self.tab.tab)
+			newWin = self.gui.getTab(self.tab.tab)
 			newWin.modified = True
 			curWin.modified = True
 
@@ -481,9 +513,25 @@ if __name__ == "__main__":
 	selected = []
 	users = ['burrows.danny@gmail.com', 'jonesjo@onid.oregonstate.edu', 'clampitl@onid.oregonstate.edu', 'jjames83@gmail.com']
 	#users = [ x for x in range(0,50)]
-
+	# test = GUI()
+	# x = button(test.screen, 3, 3, "TESTING",0)
+	# x.display(x, True, True)
+	# y = listWindow(test.screen, 20, 20, 8, 3, days, 1)
+	# y.display(y)
+	# #test.windows.append(button(test.screen, 3, 3, "TESTING",0))
 	# testDates = []
+	# # testDates.append({'start': 1, 'stop': 2, 'length': 3})
+	# # testDates.append({'start': 1, 'stop': 2, 'length': 3})
+	# # testDates.append({'start': 1, 'stop': 2, 'length': 3})
 	# testDates.append({ 'date': '04/26/2014', 'times':['12:00','12:30','1:00','1:30']})
 	# testDates.append({ 'date': '04/27/2014', 'times':['1:00','2:30','4:00','5:30']})
+	# z = pagedWindow(test.screen, 20, 20, 8, 40, testDates, 2)
+	# z.display = displayPagedWindow
+	# z.display(z)
+	# #button(screen)
 
+	# test.redrawGUI(0)
+	# test.close()
+	# exit()
+	#GUIscreen = curses.initscr()
 	mainGui().mainLoop()

@@ -288,7 +288,11 @@ class person:
       
       while True:
         # pull the object, correcting timezone to central
-        events = service.events().list(calendarId=self.userName , pageToken=page_token, timeZone='-5:00').execute()
+        try:
+          events = service.events().list(calendarId=self.userName , pageToken=page_token, timeZone='-5:00').execute()
+        except:
+          # cannot find the user for whatever reason
+          return False
         for event in events['items']:
 
           try: # there is a switch from an older calendar type using dateTime in the JSON to date in the JSON, a meek attempt at correcting
