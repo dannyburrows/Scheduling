@@ -89,7 +89,7 @@ def getCorrectedTime(input):
 def printTime(input, milTime = False):
 	# moved outside of meeting as we need for single user availability
 	midDay = ""
-	hours = input / 60
+	hours = int(input) / 60
 	if not milTime:
 		midDay = "AM"
 		if hours == 00:
@@ -98,7 +98,7 @@ def printTime(input, milTime = False):
 			if hours >= 13:
 				hours = hours - 12
 			midDay = "PM"
-	mins = input % 60
+	mins = int(input) % 60
 	time = "%02d:%02d " % (hours, mins) + midDay
 	return time
 

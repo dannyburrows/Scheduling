@@ -38,6 +38,8 @@ def displayList(self, focus = False, highlight = False):
 	if not self.modified:
 		return
 	self.pad.clear() # completely wipes this pad
+	if self.label:
+		self.addLabel()
 	if highlight:
 		self.pad.bkgd(curses.color_pair(3))
 	else:
@@ -102,29 +104,34 @@ def displayPagedWindow(self, focus = False, highlight = False):
 	if not self.modified:
 		return
 	self.pad.clear()
+	if self.label:
+		self.pad.addstr(1,7, self.items[self.focus]['date'], curses.color_pair(1))
 	if highlight:
 		self.pad.bkgd(curses.color_pair(3))
 	else:
 		self.pad.bkgd(curses.color_pair(4))
 	height, width = self.pad.getmaxyx() # get the size of the pad
-	height = height - 2 # remove padding
+	height = height - 4 # remove padding
 	page = 0 # for pagination
-	if self.selection >= height:
-		page = self.selection / height # determines which page the current selection should be on
+	if self.selection[self.focus] >= height:
+		page = self.selection[self.focus] / height # determines which page the current selection should be on
 	for x in range(0,height): # displays as many lines as can be clean fit inside the pad
 		index = x + (page * height) # holds the index for items to be displayed, as we are not just listing the first X amount
 		if (index) < len(self.items[self.focus]['times']): # prevent out of range error
 			if focus:# and self.scrollable: # the object is focused, so there will be a color change, and it scrollable so we can display the cursor
-				if (index) == self.selection: # controls the highlighting of the current selection
-					self.pad.addstr(x+1,2, str(self.items[self.focus]['times'][index]), curses.color_pair(2)) # differentiate
+				if (index) == self.selection[self.focus]: # controls the highlighting of the current selection
+					self.pad.addstr(x+3,2, getPagedTimeString(self, index), curses.color_pair(2)) # differentiate
 				else:
-					self.pad.addstr(x+1,2, str(self.items[self.focus]['times'][index]))
+					self.pad.addstr(x+3,2, getPagedTimeString(self, index))
 			else:
-				self.pad.addstr(x+1,2, str(self.items[self.focus]['times'][index]))
+				self.pad.addstr(x+3,2, getPagedTimeString(self, index))
 	if self.box: # draws box is we are supposed to
 		self.pad.box()
 	self.pad.refresh() # redraw the pad
 	self.modified = False
+
+def getPagedTimeString(self, index):
+	return printTime(self.items[self.focus]['times'][index]) + ' - ' + printTime(self.items[self.focus]['times'][index] + self.items[self.focus]['length'])
 
 class GUI:
 	"""
@@ -220,7 +227,7 @@ class GUI:
 		index = self.getMap(input)
 		return self.getTab(index)
 
-	def addLabel(self, y, x, input, justify=None, color=1):
+	def addLabel(self, input, y = None, x = None, index = None, justify='left', color=1):
 		"""
 		Displays a label at specific location.
 
@@ -229,12 +236,33 @@ class GUI:
 		x - column coordiante
 		input - text to display
 		justify - if the text needs to right justified
+		
 		"""
+		# lets modify this:
+		# take in another parameter: pad
+		# find the pad, add the label, centering at y
+		# need to get size of pad, find center and length of text
+		# if pad is 20 wide, text is 10, 20 - 10 / 2 = 5 ==> startX += 5
 		# will right justify
-		offset = 0
-		if justify == "right":
-			offset = 12 - len(input) # 12 is ~arbitrary based on the locations currently being used, this can be modified
-		self.screen.addstr(y, x + offset, input, curses.color_pair(color))
+		if index:
+			curWin = self.getWin(index)
+			maxY, maxX = curWin.getmaxyx()
+			# print maxY, maxX
+			if (justify == 'center'):
+				position = (maxX - len(input)) / 2
+			elif justify == 'left':
+				position = 0
+			elif justify == 'right':
+				position = (maxX - len(input))
+			#offset = 0
+			# if justify == "right":
+			# 	offset = 12 - len(input) # 12 is ~arbitrary based on the locations currently being used, this can be modified
+			curWin.label.append(0)
+			curWin.label.append(position)
+			curWin.label.append(input)
+			curWin.label.append(color)
+		else:
+			self.screen.addstr(y, x, input, curses.color_pair(color))
 
 	def addNotification(self, y, x, input, color=5):
 		"""
@@ -341,6 +369,7 @@ class GUIPad:
 		self.pad = self._newBox(height, width, y, x) # draws the pad
 		self.highlighted = highlighted
 		self.modified = True
+		self.label = []
 
 	def _newBox(self,height,width,y,x):
 		"""
@@ -354,6 +383,12 @@ class GUIPad:
 		"""
 		window = self.screen.subpad(height, width, y, x)
 		return window
+
+	def getmaxyx(self):
+		return self.pad.getmaxyx()
+
+	def addLabel(self):
+		self.pad.addstr(self.label[0], self.label[1], self.label[2], curses.color_pair(self.label[3]))
 
 class inputBox(GUIPad):
 	def __init__(self, y, x, width, tab, box=True, highlighted=True):
@@ -568,8 +603,18 @@ class pagedWindow(listWindow):
 	def __init__(self, height, width, y, x, items, tab, box=True, highlighted=False):
 		listWindow.__init__(self, height, width, y, x, items, tab, highlighted)
 		self.focus = 0
+		self.selection = []
 		self.display = displayPagedWindow
 
+	def changeSelection(self, direction):
+		self.modified = True
+		self.selection[self.focus] = self.selection[self.focus] + direction
+		# correct for going out of bounds
+		if self.selection[self.focus] == len(self.items[self.focus]['times']):
+			self.selection[self.focus] = 0
+		if self.selection[self.focus] == -1:
+			self.selection[self.focus] = len(self.items[self.focus]['times']) - 1
+		return True
 	# def listItems(self, focus = False, highlight = False):
 	# 	"""
 	# 	Displays the dates and times of the dates array in this object.
@@ -610,7 +655,7 @@ class pagedWindow(listWindow):
 		self.focus = self.focus + direction
 		if self.focus == len(self.items):
 			self.focus = 0
-		if self.focus == -1:
+		if self.focus == -	1:
 			self.focus = len(self.items) - 1
 		return True
 
