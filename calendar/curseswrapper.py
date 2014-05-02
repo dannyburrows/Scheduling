@@ -105,7 +105,7 @@ def displayPagedWindow(self, focus = False, highlight = False):
 		return
 	self.pad.clear()
 	if self.label:
-		self.pad.addstr(1,7, self.items[self.focus]['date'], curses.color_pair(1))
+		self.pad.addstr(1,2, self.items[self.focus]['date'] + ' ' + str(self.items[self.focus]['length']) + ' mins', curses.color_pair(1))
 	if highlight:
 		self.pad.bkgd(curses.color_pair(3))
 	else:

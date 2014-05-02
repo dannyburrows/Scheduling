@@ -361,7 +361,7 @@ class timeFrame:
 		as available.
 		"""
 		# process the event
-		#service = connection()
+		service = connection()
 		#userNames = []
 		finalAvails = []
 		#############################################################
@@ -377,28 +377,28 @@ class timeFrame:
 		# this is how i called one, let's make it call all we want
 		#start, stop, length, userNames = self.gui.getStates()
 		
-		finalAvails.append({'date': '04/13/2014', 'times': [x for x in range(0, (24*60), 15)], 'length': 60 })
-		# KEEP THIS!!
-		finalAvails.append({'date': '04/19/2014', 'times': [x for x in range(180, (20*60), 15)], 'length': 60 })
-		# index = self.gui.getMap('selectedUsers')
-		# for date in self.dates:
-		# 	# erase old people if there
-		# 	people = []
-		#	users = []
-		# 	# create people array
-		# 	for user in self.gui.windows[index].items:
-		# 		people.append(person(user, int(date['length']), service.service))
-		#		users.append(user)
-		# 	# meeting object
-		# 	newMeeting = meeting(date['start'], date['stop'], date['length'], people)
-		# 	# run the algorithms
-		# 	if newMeeting.availInTimeSlot():
-		# 	#{ 'date': 'MM/DD/YYYY', 'times': ['MM:HH'] }
-		# 	# append dates and resulting times
-		# 		finalAvails.append({'date': getDate(date['start']), 'times': newMeeting.availableTimes, 'length': date['length'] })
-		# 	else:
-		# 		self.gui.addNotification(self.warningY, self.warningX, "No users were found")
-		# 		return
+		# these were used during local testing, while flying on a place
+		# finalAvails.append({'date': '04/19/2014', 'times': [x for x in range(180, (20*60), 15)], 'length': 60 })
+		# finalAvails.append({'date': '04/13/2014', 'times': [x for x in range(0, (24*60), 15)], 'length': 60 })
+		index = self.gui.getMap('selectedUsers')
+		for date in self.dates:
+			# erase old people if there
+			people = []
+			users = []
+			# create people array
+			for user in self.gui.windows[index].items:
+				people.append(person(user, int(date['length']), service.service))
+				users.append(user)
+			# meeting object
+			newMeeting = meeting(date['start'], date['stop'], date['length'], people)
+			# run the algorithms
+			if newMeeting.availInTimeSlot():
+			#{ 'date': 'MM/DD/YYYY', 'times': ['MM:HH'] }
+			# append dates and resulting times
+				finalAvails.append({'date': getDate(date['start']), 'times': newMeeting.availableTimes, 'length': date['length'] })
+			else:
+				self.gui.addNotification(self.warningY, self.warningX, "No users were found")
+				return
 
 		# clean the gui, prep to load new window
 		self.gui.cleanGUI()
