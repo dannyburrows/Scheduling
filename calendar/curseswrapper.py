@@ -1,9 +1,14 @@
 import curses
 from timemanip import *
 
+# This is a global to trim the amount of calls to gui.screen
+# Sets one screen for the entire GUI
 GUIScreen = curses.initscr()
 
 def displayStatic(self, focus = False, highlight = False):
+	"""
+	Basic display for a static object (inputBox and button)
+	"""
 	if not self.modified:
 		return
 	self.pad.clear()
@@ -35,6 +40,9 @@ def displayStatic(self, focus = False, highlight = False):
 # 	self.modified = False
 
 def displayList(self, focus = False, highlight = False):
+	"""
+	Displays the contents of the specific array assigned to this wein
+	"""
 	if not self.modified:
 		return
 	self.pad.clear() # completely wipes this pad
@@ -65,6 +73,9 @@ def displayList(self, focus = False, highlight = False):
 	self.modified = False	
 
 def displayDateTime(self, focus = False, highlight = False):
+	"""
+	Specific display function for the date times
+	"""
 	# stops from updating unnecessarily
 	if not self.modified:
 		return
@@ -99,7 +110,12 @@ def _getStringDateTime(self, index):
 	"""
 	return ((str(self.items[index]['start']) + ' - ' + str(self.items[index]['stop']) + ' : ' + str(self.items[index]['length']) + ' mins'))
 
-def displayPagedWindow(self, focus = False, highlight = False):
+def displayPagedWindow(self, focus = False, highlight=False):
+	"""
+	The specific display function for a paged window.
+
+	It's different as it indexes based off both focus and selection
+	"""
 	# stops from updating unnecessarily
 	if not self.modified:
 		return
@@ -131,6 +147,11 @@ def displayPagedWindow(self, focus = False, highlight = False):
 	self.modified = False
 
 def getPagedTimeString(self, index):
+	"""
+	Helper function for the pagedWindow object
+
+	Returns a string with formatted start and stop times
+	"""
 	return printTime(self.items[self.focus]['times'][index]) + ' - ' + printTime(self.items[self.focus]['times'][index] + self.items[self.focus]['length'])
 
 class GUI:
@@ -140,7 +161,7 @@ class GUI:
 	"""
 
 	def __init__(self):
-		global GUIScreen
+		global GUIScreen # removes a lot of calls to self.gui.screen.X
 		self.windows = [] 	# holds a list of all the windows that will be generated
 		self.mapWindows = []	# keeps a mapping of the name of the window and it's tabstop
 		self.screen = GUIScreen#curses.initscr()	# the main screen that everything will be displayed to
@@ -162,7 +183,7 @@ class GUI:
 		Draws a box around the screen and refreshes the screen.
 		"""
 		tab.maxTab = len(self.windows) - 1
-		self.screen.box()
+		#self.screen.box()
 		self.screen.refresh()
 		return True
 
@@ -190,7 +211,7 @@ class GUI:
 		Erases the screen and resets the windows and mapWindows arrays.
 		"""
 		self.screen.erase()
-		self.screen.box()
+		#self.screen.box()
 		self.windows = []
 		self.mapWindows = []
 		return True
@@ -214,6 +235,9 @@ class GUI:
 		"""
 		return [x[input] for x in self.mapWindows if input in x][0]
 
+	def getKey(self, tab):
+		return [key for key in self.mapWindows[tab].keys()][0]
+
 	def getTab(self, tab):
 		"""
 		Based on the tab location, returns the pad assigned to that tabstop.
@@ -224,6 +248,9 @@ class GUI:
 		return None
 
 	def getWin(self, input):
+		"""
+		Returns the window object for manipulation
+		"""
 		index = self.getMap(input)
 		return self.getTab(index)
 
@@ -284,11 +311,12 @@ class GUI:
 		"""
 		self.screen.move(y,x)
 		self.screen.clrtoeol() # clears to the end of the line, this will remove items in between cursor and end of line, be careful
-		self.screen.box()
+		#self.screen.box()
 
 	def getStates(self):
 		"""
-		Grabs the values of every item in the window
+		Grabs the values of dates and time from the window
+		Returns the start date and time, and length as a tuple
 		"""
 		# get the values for everything on the board
 		# compose indices and prep for ouput
@@ -302,13 +330,26 @@ class GUI:
 		else:
 			endDate = startDate
 		startTime = self._getTime("start")		# gets starting time, in standard format HH:MM
-		endTime = self._getTime("end")			# gets ending time
 		length = self.windows[self.getMap('length')].getSelectedValue() # gets the length attribute
+		# print self.winExists('endH')
+		try:
+			endTime = self._getTime("end")			# gets ending time\
+		except:
+			hours = int(startTime[0:2])
+			mins = int(startTime[3:5])
+			#print hours, mins
+			totalMins = getTotalMinutes(hours, mins)
+			endTime = totalMins + int(length)
+			endTime = printTime(endTime, True)
+			# print endTime
 		start = startDate + " " + startTime		# create the date time string that the interface is expecting
 		end = endDate + " " + endTime
 		return start, end, int(length)#, userNames
 
 	def winExists(self,input):
+		"""
+		Returns true if the window is in the mapWindows array
+		"""
 		if input in self.mapWindows[0]:
 			return True
 		return False
@@ -600,7 +641,7 @@ class pagedWindow(listWindow):
 	"""
 	A child of the listWindow class. Allows indexing of multiple windows to one tab, displaying only the currently highlighted window.
 	"""
-	def __init__(self, height, width, y, x, items, tab, box=True, highlighted=False):
+	def __init__(self, height, width, y, x, items, tab, box=True, highlighted=True):
 		listWindow.__init__(self, height, width, y, x, items, tab, highlighted)
 		self.focus = 0
 		self.selection = []
