@@ -146,10 +146,17 @@ class person:
     self.blockedTimes = []
     self.availabilities = {'date':None,'times':[]}
     self.userName = userName
+    self.errorFlag = False
+    self.errorMsg = ""
+    self._process(google)
     # if the source is the google calendar
+  
+  def _process(self, google):
     if google:
-      assert service != None
-      self._generateBlocks(self.service)
+      assert self.service != None
+      if not self._generateBlocks(self.service):
+        self.errorFlag = True
+        self.errorMsg = self.userName + ' calendar unavailable'
 
   # Add new blocked out time
   def _addBlockedTime(self, start, end, google = True):
