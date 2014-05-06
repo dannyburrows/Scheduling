@@ -380,6 +380,22 @@ class GUI:
 		return (self.windows[hourI].getSelectedValue() + ":" + self.windows[minI].getSelectedValue())
 
 	def addUIElement(self, elem, mapping, tab, height=0, width=0, y=0, x=0, items=None, box=True, highlighted=True, text=None):
+		"""
+		Adds a specific case of a 'window', with the required parameters
+
+		Parameters:
+		elem - the type of window pad to add
+		mapping - name of the window to easily control elements
+		tab - the tabstop number, used in navigation
+		height - number of rows for the pad
+		width - number of columns for the pad
+		y - the starting row location
+		x - the starting colun location
+		items - a list of the items that will be displayed in the window; may be a specially formatted dictionary
+		box - boolean on whether to draw a box around the window
+		highlighted - boolean, determines if the window should be highlighted when focused
+		text - the text to display in the window
+		"""
 		if elem == 'list':
 			self.windows.append(listWindow(height, width, y, x, items, tab.maxTab, box, highlighted))
 			self.mapWindows.append({mapping:tab.maxTab})
@@ -426,6 +442,10 @@ class GUIPad:
 		return window
 
 	def getmaxyx(self):
+		"""
+		A specially wrapped method of getting the size of the pad.
+		Returns Y,X tuple
+		"""
 		return self.pad.getmaxyx()
 
 	def addLabel(self):

@@ -86,9 +86,6 @@ class meeting:
 		for user in self.availUsers:
 			print user
 
-	
-	
-
 class window:
 	def __init__(self, user, startTime = None, endTime = None):
 		self.user = user
