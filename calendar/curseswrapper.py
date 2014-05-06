@@ -25,20 +25,6 @@ def displayStatic(self, focus = False, highlight = False):
 	self.pad.refresh()
 	self.modified = False
 
-# def displayButton(self, focus = False, highlight = False):
-# 	if not self.modified:
-# 		return
-# 	self.pad.clear() # completely wipes this pad
-# 	if highlight:
-# 		self.pad.bkgd(curses.color_pair(3))
-# 	else:
-# 		self.pad.bkgd(curses.color_pair(4))
-# 	self.pad.addstr(1,2,self.text)
-# 	if self.box: # draws box is we are supposed to
-# 		self.pad.box()
-# 	self.pad.refresh() # redraw the pad
-# 	self.modified = False
-
 def displayList(self, focus = False, highlight = False):
 	"""
 	Displays the contents of the specific array assigned to this wein
@@ -110,7 +96,7 @@ def _getStringDateTime(self, index):
 	"""
 	return ((str(self.items[index]['start']) + ' - ' + str(self.items[index]['stop']) + ' : ' + str(self.items[index]['length']) + ' mins'))
 
-def displayPagedWindow(self, focus = False, highlight=False):
+def displayPagedWindow(self, focus = False, highlight = False):
 	"""
 	The specific display function for a paged window.
 
@@ -468,19 +454,6 @@ class inputBox(GUIPad):
 	def clean(self):
 		self.modified = True
 
-	# def listItems(self, focus = False, highlight = False):
-	# 	if not self.modified:
-	# 		return
-	# 	self.pad.clear()
-	# 	if highlight:
-	# 		self.pad.bkgd(curses.color_pair(3))
-	# 	else:
-	# 		self.pad.bkgd(curses.color_pair(4))
-	# 	if self.box:
-	# 		self.pad.box()
-	# 	self.pad.refresh()
-	# 	self.modified = False
-
 class button(GUIPad):
 	def __init__(self, y, x, text, tab, box=True, highlighted=True):
 		width = len(text) + 4 # dynamic size of button
@@ -490,26 +463,6 @@ class button(GUIPad):
 		self.text = text
 		self.scrollable = False
 		self.display = displayStatic
-
-	# def listItems(self, focus=False, highlight=False):
-	# 	"""
-	# 	Display the tied list of this object. Paginates based on the height of the pad and the length of the list.
-
-	# 	Parameters
-	# 	focus - if this object is the location of the current tabstop, provide option to move the values
-	# 	"""
-	# 	if not self.modified:
-	# 		return
-	# 	self.pad.clear() # completely wipes this pad
-	# 	if highlight:
-	# 		self.pad.bkgd(curses.color_pair(3))
-	# 	else:
-	# 		self.pad.bkgd(curses.color_pair(4))
-	# 	self.pad.addstr(1,2,self.text)
-	# 	if self.box: # draws box is we are supposed to
-	# 		self.pad.box()
-	# 	self.pad.refresh() # redraw the pad
-	# 	self.modified = False
 
 class listWindow(GUIPad):
 	"""
@@ -534,41 +487,6 @@ class listWindow(GUIPad):
 		"""
 		self.scrollable = input
 		return True
-
-	# def listItems(self, focus = False, highlight=False):
-	# 	"""
-	# 	Display the tied list of this object. Paginates based on the height of the pad and the length of the list.
-
-	# 	Parameters
-	# 	focus - if this object is the location of the current tabstop, provide option to move the values
-	# 	highlight - whether this object should light up when it is being focused or not
-	# 	"""
-	# 	if not self.modified:
-	# 		return
-	# 	self.pad.clear() # completely wipes this pad
-	# 	if highlight:
-	# 		self.pad.bkgd(curses.color_pair(3))
-	# 	else:
-	# 		self.pad.bkgd(curses.color_pair(4))
-	# 	height, width = self.pad.getmaxyx() # get the size of the pad
-	# 	height = height - 2 # remove padding
-	# 	page = 0 # for pagination
-	# 	if self.selection >= height:
-	# 		page = self.selection / height # determines which page the current selection should be on
-	# 	for x in range(0,height): # displays as many lines as can be clean fit inside the pad
-	# 		index = x + (page * height) # holds the index for items to be displayed, as we are not just listing the first X amount
-	# 		if (index) < len(self.items): # prevent out of range error
-	# 			if focus:# and self.scrollable: # the object is focused, so there will be a color change, and it scrollable so we can display the cursor
-	# 				if (index) == self.selection: # controls the highlighting of the current selection
-	# 					self.pad.addstr(x+1,2, str(self.items[index]), curses.color_pair(2)) # differentiate
-	# 				else:
-	# 					self.pad.addstr(x+1,2, str(self.items[index]))
-	# 			else:
-	# 				self.pad.addstr(x+1,2, str(self.items[index]))
-	# 	if self.box: # draws box is we are supposed to
-	# 		self.pad.box()
-	# 	self.pad.refresh() # redraw the pad
-	# 	self.modified = False
 
 	def changeItems(self, items):
 		"""
@@ -615,54 +533,12 @@ class timeWindow(listWindow):
 		listWindow.__init__(self, height, width, y, x, items, tab, box, highlighted)
 		self.display = displayDateTime
 
-	# def listItems(self, focus = False, highlight=False):
-	# 	"""
-	# 	Display the tied list of this object. Paginates based on the height of the pad and the length of the list.
-
-	# 	Parameters
-	# 	focus - if this object is the location of the current tabstop, provide option to move the values
-	# 	highlight - whether this object should light up when it is being focused or not
-	# 	"""
-	# 	# stops from updating unnecessarily
-	# 	if not self.modified:
-	# 		return
-	# 	self.pad.clear()
-	# 	if highlight:
-	# 		self.pad.bkgd(curses.color_pair(3))
-	# 	else:
-	# 		self.pad.bkgd(curses.color_pair(4))
-	# 	height, width = self.pad.getmaxyx() # get the size of the pad
-	# 	height = height - 2 # remove padding
-	# 	page = 0 # for pagination
-	# 	if self.selection >= height:
-	# 		page = self.selection / height # determines which page the current selection should be on
-	# 	for x in range(0,height): # displays as many lines as can be clean fit inside the pad
-	# 		index = x + (page * height) # holds the index for items to be displayed, as we are not just listing the first X amount
-	# 		if (index) < len(self.items): # prevent out of range error
-	# 			if focus:# and self.scrollable: # the object is focused, so there will be a color change, and it scrollable so we can display the cursor
-	# 				if (index) == self.selection: # controls the highlighting of the current selection
-	# 					self.pad.addstr(x+1,2, self._getStringDateTime(index), curses.color_pair(2)) # differentiate
-	# 				else:
-	# 					self.pad.addstr(x+1,2, self._getStringDateTime(index))
-	# 			else:
-	# 				self.pad.addstr(x+1,2, self._getStringDateTime(index))
-	# 	if self.box: # draws box is we are supposed to
-	# 		self.pad.box()
-	# 	self.pad.refresh() # redraw the pad
-	# 	self.modified = False
-
-	# def _getStringDateTime(self, index):
-	# 	"""
-	# 	Returns a readable string with times that are going to be checked
-	# 	"""
-	# 	return ((str(self.items[index]['start']) + ' - ' + str(self.items[index]['stop']) + ' : ' + str(self.items[index]['length']) + ' mins'))
-
 class pagedWindow(listWindow):
 	"""
 	A child of the listWindow class. Allows indexing of multiple windows to one tab, displaying only the currently highlighted window.
 	"""
 	def __init__(self, height, width, y, x, items, tab, box=True, highlighted=True):
-		listWindow.__init__(self, height, width, y, x, items, tab, highlighted)
+		listWindow.__init__(self, height, width, y, x, items, tab, box, highlighted)
 		self.focus = 0
 		self.selection = []
 		self.display = displayPagedWindow
@@ -676,37 +552,6 @@ class pagedWindow(listWindow):
 		if self.selection[self.focus] == -1:
 			self.selection[self.focus] = len(self.items[self.focus]['times']) - 1
 		return True
-	# def listItems(self, focus = False, highlight = False):
-	# 	"""
-	# 	Displays the dates and times of the dates array in this object.
-	# 	"""
-	# 	# stops from updating unnecessarily
-	# 	if not self.modified:
-	# 		return
-	# 	self.pad.clear()
-	# 	if highlight:
-	# 		self.pad.bkgd(curses.color_pair(3))
-	# 	else:
-	# 		self.pad.bkgd(curses.color_pair(4))
-	# 	height, width = self.pad.getmaxyx() # get the size of the pad
-	# 	height = height - 2 # remove padding
-	# 	page = 0 # for pagination
-	# 	if self.selection >= height:
-	# 		page = self.selection / height # determines which page the current selection should be on
-	# 	for x in range(0,height): # displays as many lines as can be clean fit inside the pad
-	# 		index = x + (page * height) # holds the index for items to be displayed, as we are not just listing the first X amount
-	# 		if (index) < len(self.items[self.focus]['times']): # prevent out of range error
-	# 			if focus:# and self.scrollable: # the object is focused, so there will be a color change, and it scrollable so we can display the cursor
-	# 				if (index) == self.selection: # controls the highlighting of the current selection
-	# 					self.pad.addstr(x+1,2, str(self.items[self.focus]['times'][index]), curses.color_pair(2)) # differentiate
-	# 				else:
-	# 					self.pad.addstr(x+1,2, str(self.items[self.focus]['times'][index]))
-	# 			else:
-	# 				self.pad.addstr(x+1,2, str(self.items[self.focus]['times'][index]))
-	# 	if self.box: # draws box is we are supposed to
-	# 		self.pad.box()
-	# 	self.pad.refresh() # redraw the pad
-	# 	self.modified = False
 
 	def changeFocus(self, direction):
 		"""

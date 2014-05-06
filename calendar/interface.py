@@ -125,20 +125,23 @@ class window:
 		loopDay = today # used in the while loop
 		
 		# if a window is selected, parse time and set time
+		##### THIS ONE WORKS CORRECTLY #####
 		if self.startTime and self.endTime:
 			startYear, self.startDate, start = getCorrectedTime(self.startTime) # ints for loops and manipulation
 			endYear, self.endDate, end = getCorrectedTime(self.endTime) # ints for loops and manipulation
 			loopDay = convertToDatetime(self.startTime) #datetime.strptime(self.startTime[0:10], '%m/%d/%Y') # gets the initial day of the year to start our loop
 			self.beginTime = getTime(self.startTime) # beginning time
 			self.stopTime = getTime(self.endTime) # ending time
-		else:
+		else: ##### TODO FIX THIS #####
 			endDay = today + timedelta(days=7) # sets ending loop day, where start is today's date
-			start = getStringDate(today) # date conversion for start date
-			end = getStringDate(endDay) # date conversion for end date
+			# start = getStringDate(today) # date conversion for start date
+			# end = getStringDate(endDay) # date conversion for end date
 			self.startDate = getDayOfYear(today) # day of the year
 			self.endDate = getDayOfYear(endDay) # day of the year
 			self.beginTime = "08:00" # school hours
 			self.stopTime = "18:00"	# school hours
+			start = 480
+			end = 1080
 
 		assert self.startDate <= self.endDate
 
@@ -173,7 +176,7 @@ def main():
 	stop = "04/20/2014 18:00"
 	# length will be 15 or greater
 	length = 60
-	userWindow = True
+	userWindow = False
 	shortWindow = False
 	broadWindow = False
 
@@ -184,14 +187,14 @@ def main():
 	users.append(person("jonesjo@onid.oregonstate.edu", length, service.service))
 	users.append(person("burrows.danny@gmail.com", length, service.service))
 
-	classDays = "24" # M W F
-	classStart = "15:00:00" # 10 AM
-	classEnd = "16:30:00" # 1130 AM
+	classDays = "135" # M W F
+	classStart = "10:00:00" # 10 AM
+	classEnd = "11:30:00" # 1130 AM
 	# addClassTimeBlock(self, classDays, classStart, classEnd, startDay, endDay)
 	# start = datetime.now()
 	# end = start + timedelta(days=7)
 	# start = getStringDate(start), end = getStringDate(end)
-	users[1].addClassTimeBlock(classDays, classStart, classEnd, start, stop)
+	users[0].addClassTimeBlock(classDays, classStart, classEnd, start, stop)
 
 	users.append(person("clampitl@onid.oregonstate.edu", length, service.service))
 	users.append(person("jjames83@gmail.com", length, service.service))
@@ -202,7 +205,7 @@ def main():
 		#
 		# Note that the start takes in both the start date and start time
 		# Stop takes in both the stop date and stop time
-		userWindow = window(users[1])#,start,stop) # INDIVIDUAL USER
+		userWindow = window(users[0])#,start,stop) # INDIVIDUAL USER
 		userWindow.printWindow(False)
 	elif shortWindow:
 		#2 	Given a specific time window and a list of usernames, list all users available for the entire duration.
@@ -228,10 +231,12 @@ def main():
 		classStart = "10:00:00" # 10 AM
 		classEnd = "11:30:00" # 1130 AM
 		# addClassTimeBlock(self, classDays, classStart, classEnd, startDay, endDay)
+		
+		# start and stop here are specified before determining whether we want a sane default or just a restricted time
 		users[1].addClassTimeBlock(classDays, classStart, classEnd, start, stop)
 
-		#newWindow = window(users,start,stop)
-		#newWindow.printWindow()
+		newWindow = window(users[1])#,start,stop)
+		newWindow.printWindow(False)
 
 if __name__ == "__main__":
 	main()

@@ -57,6 +57,13 @@ def getInput(self):
 	win.highlighted = True
 	win.modified = True
 	domainWin = self.gui.getWin('domain')
+	##################################
+	# a big thing here: 
+	# if the domain is ONID Username
+	# we need to run a query that
+	# gets the public calendar from
+	# the database
+	##################################
 	domainWin.modified = True # the input box is causing an issue with deleting the the box here, fix it later
 	domain = domainWin.getSelectedValue() # get the text from the domain name
 	if not text:
@@ -290,47 +297,6 @@ class timeFrame:
 		self.gui.cleanGUI()
 		mainGui().mainLoop()
 
-	# def _getInput(self):
-	# 	"""
-	# 	Form control for the user name input. Turns the cursor back on and echos the typed text.
-	# 	Pulls the domain and adds the input text, concatenating the two and appending to the selected array.
-	# 	"""
-	# 	win = self.gui.getWin('inputUser')
-	# 	# takes away the highlighted background and refreshes the screen
-	# 	win.highlighted = False
-	# 	win.modified = True
-	# 	self.gui.redrawGUI(self.tab.tab)
-	# 	# get the location of the input box, and the length of the box
-	# 	y,x,length = win.inputParams()
-	# 	# turn on charatcer typing and make the cursor visible
-	# 	curses.echo()
-	# 	curses.curs_set(2)
-	# 	# places the cursor at the beginning of the box, restricting the size to 1 less than the box
-	# 	# it is important to ensure we have enough space to type the entire email
-	# 	text = self.gui.screen.getstr(y, x, length)
-	# 	# turn off character displays and turn the cursor off
-	# 	curses.noecho()
-	# 	curses.curs_set(0)
-	# 	# change the input back to its original state
-	# 	win.highlighted = True
-	# 	win.modified = True
-	# 	domainWin = self.gui.getWin('domain')
-	# 	domainWin.modified = True # the input box is causing an issue with deleting the the box here, fix it later
-	# 	domain = domainWin.getSelectedValue() # get the text from the domain name
-	# 	if not text:
-	# 		self.gui.addNotification(self.warningY, self.warningX, 'Please input a valid user name')
-	# 		return
-	# 	user = text + domain
-	# 	if user in self.selected: # check to ensure user is not being doubly added
-	# 		self.gui.addNotification(self.warningY, self.warningX, 'User already added')
-	# 		return
-	# 	# updates the selected box and prepares for refresh		
-	# 	self.selected.append(user) # return text
-	# 	changeWin = self.gui.getWin('selectedUsers')
-	# 	changeWin.changeSelection(0)
-
-	# 	return True
-
 	def submitRequest(self):
 		"""
 		Prepares to query the calendar API and determine the available times.
@@ -361,12 +327,8 @@ class timeFrame:
 		"""
 		# process the event
 		service = connection()
-		#userNames = []
 		finalAvails = []
 	
-		# this is how i called one, let's make it call all we want
-		#start, stop, length, userNames = self.gui.getStates()
-		
 		# these were used during local testing, while flying on a place
 		# finalAvails.append({'date': '04/19/2014', 'times': [x for x in range(180, (20*60), 15)], 'length': 60 })
 		# finalAvails.append({'date': '04/13/2014', 'times': [x for x in range(0, (24*60), 15)], 'length': 60 })
@@ -382,7 +344,7 @@ class timeFrame:
 				# TODO
 				# Add database query here to add blocked times for users.
 				# The syntax is as follows:
-				# THIS QUERY WILL BE SLIGHTLY DIFFERENT
+				# THIS QUERY WILL BE DIFFERENT
 				# database.query('SELECT classDays, classStart, classEnd FROM classes INNER JOIN class.ID ON class.ID = professor.ID WHERE professor.username ="user" ')
 				# test.addClassTimeBlock(classDays, classStart, classEnd, date['start'], date['stop'])
 				###########################################				
@@ -408,48 +370,6 @@ class timeFrame:
 		# make the new window, passing in the results from the query
 		resultGui(finalAvails,users).mainLoop()
 
-		#############################################################
-		#															#
-		# Start the integration with the interface for the calendar #
-		# api and other functions.                                  #
-		# Need to work on the interface to automatically add events #
-		# that are pulled from database, no need to do it here.     #
-		#															#
-		#############################################################
-		# for user in userNames:
-		#  	people.append(person(user, length, service.service))
-
-		# # create a meeting object that will hold availability information for the group
-		# newMeeting = meeting(start, stop, length, people)
-		# # run algorithm to find available time slots
-		# newMeeting.availInTimeSlot()
-		# times = []
-		# # no need to access directly
-		# for x in newMeeting.availableTimes:
-		# 	# user friendly format
-		# 	times.append(printTime(x) + " - "+ printTime(x + length))
-		# # check if we have already polled results, if so, then just modify that structure
-		# try:
-		# 	index = self.gui.getMap('results')
-		# except:
-		# 	index = 0
-
-		# if index:
-		# 	resultsWin = self.gui.getTab(index)
-		# 	resultsWin.changeItems(times)
-		# else:
-		# 	self.gui.addLabel(3,64,"Available Times")
-		# 	maxSize = len(times) + 1
-		# 	if len(times) > 50:
-		# 		maxSize = 50
-
-		# 	self.gui.windows.append(listWindow(maxSize + 2, 23, 6, 60, times, self.tab.incTab(), True, True))
-		# 	self.gui.mapWindows.append({'results':self.tab.maxTab})
-
-		# date = self.gui.getDate('startDate')
-		# self.gui.addLabel(4,67,date, color=4)				
-		return True
-
 class resultGui:
 	"""
 	Draws the window with the list of results from the queries
@@ -471,13 +391,15 @@ class resultGui:
 
 	def buildWindows(self):
 		maxY, maxX = self.gui.screen.getmaxyx()
-		# TODO FIX THIS HIGHLIGHT BULLSHIT
-		# This isnt highlighting....
-		self.gui.addUIElement('pagedWin', 'results', self.tab, (maxY - 8), 24, 5, 55, self.dates, True, True)
+		self.gui.addUIElement('pagedWin', 'results', self.tab, (maxY - 8), 24, 5, 55, self.dates, box=True, highlighted=True)
+		
+		# set window selection for each individual array
+		# also, tell the UI to display the label at the top
 		tempWin = self.gui.getWin('results')
 		tempWin.label = True
 		for x in self.dates:
 			tempWin.selection.append(0)
+
 		self.gui.addUIElement('list', 'users', self.tab, (maxY - 8), 50, 5, 2, self.users, True, True)
 
 		self.gui.addUIElement('button', 'addSlot', self.tab, y=1, x=1, text='(A)dd Time Slot')
@@ -491,7 +413,7 @@ class resultGui:
 				self.gui.close()
 				exit()
 			elif event == ord("\t"):
-				self._moveTab(+1)
+				_moveTab(self, +1)
 			elif event == event == curses.KEY_RIGHT:
 				#win = self.gui.getMap('results')
 				win = self.gui.getWin('results')
@@ -501,42 +423,11 @@ class resultGui:
 				win = self.gui.getWin('results')
 				win.changeFocus(-1)
 			elif event == curses.KEY_DOWN:
-				self._processUpDown(+1)
+				_processUpDown(self, +1)
 			elif event == curses.KEY_UP:
-				self._processUpDown(-1)
+				_processUpDown(self, -1)
 
 			self.gui.redrawGUI(self.tab.tab)
-
-	def _processUpDown(self, direction):
-		# find which window we're in and modify that value
-		# move the index back 1
-		activeWin = self.gui.getTab(self.tab.tab)
-		if activeWin.scrollable == False:
-			self.gui.addNotification(self.warningY, self.warningX, "Cannot modify value",5)
-		else:
-			try:
-				activeWin.changeSelection(direction)
-			except:
-				pass
-
-	def _moveTab(self, direction):
-		if direction == +1:
-			# move the tabstop and redraw windows, highlighting the next window
-			self.gui.clearWarning(self.warningY, self.warningX)
-			curWin = self.gui.getTab(self.tab.tab)
-			self.tab.nextTab()
-			newWin = self.gui.getTab(self.tab.tab)
-			newWin.modified = True
-			curWin.modified = True
-		elif direction == -1:
-			# move the tabstop and redraw windows, highlighting the next window
-			self.gui.clearWarning(self.warningY, self.warningX)
-			curWin = self.gui.getTab(self.tab.tab)
-			self.tab.prevTab()
-			newWin = self.gui.getTab(self.tab.tab)
-			curWin.modified = True
-			newWin.modified = True
-
 
 class availableUsers:
 	def __init__(self):
@@ -582,6 +473,7 @@ class availableUsers:
 		maxY, maxX = self.gui.screen.getmaxyx()
  		changeX = maxX / 10
 		changeY = maxY / 10
+		self.warningY = (changeY * 3) + (y + 13)
 
 		# User input and remove data
 		self.gui.addLabel(y=5,x=6, input=" Enter a (u)sername ")
@@ -649,6 +541,7 @@ class availableUsers:
 
 	def submitRequest(self):
 		service = connection()
+		dates = []
 		index = self.gui.getMap('selectedUsers')
 		for date in self.dates:
 			# erase old people if there
@@ -676,13 +569,54 @@ class availableUsers:
 			#
 			# users are held in newMeeting.availUsers
 			# 
-				self.gui.cleanGUI()
-				#  call new results gui
-				#  userResults(newMeeting.availUsers).mainLoop()
-				return True
+				dates.append({'date': getDate(date['start']), 'users': newMeeting.availUsers, 'length': date['length'] })
 			else:
 				self.gui.addNotification(self.warningY, self.warningX, "No users were found")
 				return False
+		#self.gui.cleanGUI()
+		#  call new results gui
+		#  userResults(newMeeting.availUsers, dates).mainLoop()
+		return True
+
+class userResults:
+	def __init__(self, dates, users):
+		self.dates = dates
+		self.users = users
+		self.gui = GUI()
+		self.tab = tabstop()
+		self.warningY = 1
+		self.warningX = 70
+
+		self.buildWindows()
+		self.tab.tab = 0
+
+		self.gui.drawGUI(self.tab)
+		self.gui.redrawGUI(self.tab.tab)
+
+	def buildWindows(self):
+		maxY, maxX = self.gui.screen.getmaxyx()
+
+		# the results are going to formulated a bit differently
+		# we need a list of users for each date and time
+		# display the start time of the meeting, the date, the length of the meeting and a list of users that are going to attend
+
+		# MM/DD/YYYY - 120 Mins 	
+		# user1
+		# user2
+		# user3
+		#
+		# Left/right arrows to nav
+		self.gui.addUIElement('pagedWin', 'results', self.tab, (maxY - 8), 24, 5, 55, self.dates, True, True)
+		tempWin = self.gui.getWin('results')
+		tempWin.label = True
+		for x in self.dates:
+			tempWin.selection.append(0)
+		self.gui.addUIElement('list', 'users', self.tab, (maxY - 8), 50, 5, 2, self.users, True, True)
+
+		self.gui.addUIElement('button', 'addSlot', self.tab, y=1, x=1, text='(A)dd Time Slot')
+		self.gui.addUIElement('button', 'back', self.tab, y=1, x=21, text='(B)ack')
+		self.gui.addUIElement('button', 'exit', self.tab, y=1, x=32, text='E(x)it')
+
 
 class mainGui:
 	"""
@@ -725,23 +659,6 @@ class mainGui:
 					prog.mainLoop()
 			elif (event in keyMaps):
 				exec(keyMaps[event])
-		# while True:
-		# 	event = self.gui.screen.getch()
-		# 	if event == ord('x'):
-		# 		self.gui.close()
-		# 		exit()
-		# 	elif event == curses.KEY_DOWN or event == ord('\t'):
-		# 		self._processUpDown(+1)
-		# 	elif event == curses.KEY_UP:
-		# 		self._processUpDown(-1)
-		# 	elif event == ord('\n'):
-		# 		newWin = self.processEnter()
-		# 		if newWin == 2:
-		# 			timeFrame().mainLoop()
-		# 		elif newWin == 3:
-		# 			prog = availableUsers()
-		# 			prog.mainLoop()
-		# 		# rangeDates.mainLoop()
 
 			self.gui.redrawGUI(self.tab.tab)
 
@@ -784,7 +701,7 @@ if __name__ == "__main__":
 	mins = [str(x).zfill(2) for x in range(0,60,15)]
 	lengths = [str(x) for x in range(15,375,15)]
 	selected = []
-	domains =['@gmail.com', '@onid.oregonstate.edu']
+	domains =['ONID Username', '@gmail.com', '@onid.oregonstate.edu', 'eecs.oregonstate.edu']
 	users = ['burrows.danny@gmail.com', 'jonesjo@onid.oregonstate.edu', 'clampitl@onid.oregonstate.edu', 'jjames83@gmail.com']
 	#users = [ x for x in range(0,50)]
 	# test = GUI()
