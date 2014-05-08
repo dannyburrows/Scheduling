@@ -104,3 +104,32 @@ def printTime(input, milTime = False):
 
 def getTotalMinutes(hours, mins):
 	return hours * 60 + mins
+
+
+def fixDate(input):
+	input = input.split('/')
+	month = input[0].zfill(2)
+	day = input[1].zfill(2)
+	year = str(int(input[2]) + 2000)
+	return month + '/' + day + '/' + year
+
+def fixTime(input):
+	input = input.zfill(4)
+	return input[0:2] + ':' + input[2:4]
+
+def setDateTime(date, hour):
+	return date + ' ' + hour
+
+def parseDays(input):
+	days = {'S': 0,
+			'M': 1,
+			'T': 2,
+			'W': 3,
+			'R': 4,
+			'F': 5,
+			'A': 6}
+	temp = ''
+	for day in input:
+		temp = temp + str(days[day])
+
+	return temp

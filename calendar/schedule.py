@@ -13,6 +13,8 @@ from interface import *
 from timemanip import *
 from curseswrapper import *
 
+import MySQLdb
+
 def _addDateTime(self):
 	"""
 	Adds the current time to the dates array.
@@ -340,6 +342,9 @@ class timeFrame:
 			# create people array
 			for user in self.gui.windows[index].items:
 				temp = person(user, int(date['length']), service.service)
+				if temp.errorFlag:
+					self.gui.addNotification(self.warningY, self.warningX, temp.errorMsg)
+					return False
 				###########################################
 				# TODO
 				# Add database query here to add blocked times for users.
@@ -347,13 +352,28 @@ class timeFrame:
 				# THIS QUERY WILL BE DIFFERENT
 				# database.query('SELECT classDays, classStart, classEnd FROM classes INNER JOIN class.ID ON class.ID = professor.ID WHERE professor.username ="user" ')
 				# test.addClassTimeBlock(classDays, classStart, classEnd, date['start'], date['stop'])
-				###########################################				
-				if temp.errorFlag:
-					self.gui.addNotification(self.warningY, self.warningX, temp.errorMsg)
-					return False
-				else:
-					people.append(temp)
-					users.append(user)
+				###########################################
+				host = 'localhost'
+				user = 'root'
+				passwd = ''
+				database = 'Scheduling'
+
+				db = MySQLdb.connect(host=host,user=user,passwd=passwd,db=database)
+				sql = db.cursor()
+				# User is coming in as jonesjo@onid.oregonstate.edu, the email, not the onid
+				# think about how to represent this
+				query = 'SELECT scheduled_days, scheduled_start_time, scheduled_end_time, scheduled_start_date, scheduled_end_date FROM class AS cls INNER JOIN instructor AS ins ON ins.id = cls.instructor WHERE ins.username = "' + user + '"'
+				sql.execute(query)
+				for row in sql.fetchall():
+					startTime = fixTime(row[1])
+					endTime = fixTime(row[2])
+					start = fixDate(row[3])
+					end = fixDate(row[4])
+					startDate = setDateTime(start, startTime)
+					endDate = setDateTime(end, endTime)
+					user.addClassTimeBlock(parseDays(row[0]), startTime, endTime, start, end)
+				people.append(temp)
+				users.append(user)
 			# meeting object
 			newMeeting = meeting(date['start'], date['stop'], date['length'], people)
 			# run the algorithms
@@ -725,4 +745,5 @@ if __name__ == "__main__":
 	# test.close()
 	# exit()
 	#GUIscreen = curses.initscr()
+	
 	mainGui().mainLoop()
