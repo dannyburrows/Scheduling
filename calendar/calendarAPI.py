@@ -14,11 +14,7 @@ import httplib2
 import os
 import sys
 
-import dateutil.parser
-import time
-
 from timemanip import *
-from dateutil.tz import *
 from datetime import *
 
 from apiclient import discovery
@@ -95,16 +91,22 @@ class unavailTime:
 
   def setStart(self, start, google = True):
     if google:
-      self.start = dateutil.parser.parse(start)
+      temp = simpleParse(start)
+      temp = temp[:19]
+      self.start = convertToDatetimeFull(temp)
     else:
       self.start = start
     self._updateLength()
     return True
 
   def setEnd(self, end, google = True):
+    """
+      Sets the end time of the block. There is a bit of brute force here due to the unicode calendar object being returned from Google.
+    """
     if google:
-      self.end = dateutil.parser.parse(end)
-      self._updateLength()
+      temp = simpleParse(end) # turn unicode to string
+      temp = temp[:19] # trim the time zone out
+      self.end = convertToDatetimeFull(temp) # convert to a datetime object for further manipulation later
     else:
       self.end = end
     self._updateLength()

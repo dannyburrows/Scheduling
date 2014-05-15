@@ -82,6 +82,15 @@ def getCorrectedTime(input):
     mins = int(input[11:13]) * 60 + int(input[14:16])
     return year, date, mins
 
+def simpleParse(input):
+	"""
+		Takes a google date time and parses to the proper format. Previously used dateutil.parser, no longer needed
+	"""
+	if input[11:] == "":
+		ending = "00:00:00"
+	else:
+		ending = input[11:]
+	return input[0:10] + " " + ending
 #################################################
 #	       Displaying and calculations			#
 #################################################

@@ -13,7 +13,7 @@ from interface import *
 from timemanip import *
 from curseswrapper import *
 
-import MySQLdb
+#import MySQLdb
 
 def _addDateTime(self):
 	"""
@@ -62,6 +62,9 @@ def getInput(self):
 	##################################
 	# a big thing here: 
 	# if the domain is ONID Username
+	# 
+	# query database that has ONIDs and emails, if not in db, assume @onid.oregonstate.edu
+	# 
 	# we need to run a query that
 	# gets the public calendar from
 	# the database
@@ -354,24 +357,24 @@ class timeFrame:
 				# test.addClassTimeBlock(classDays, classStart, classEnd, date['start'], date['stop'])
 				###########################################
 				host = 'localhost'
-				user = 'root'
+				username = 'root'
 				passwd = ''
 				database = 'Scheduling'
 
-				db = MySQLdb.connect(host=host,user=user,passwd=passwd,db=database)
-				sql = db.cursor()
-				# User is coming in as jonesjo@onid.oregonstate.edu, the email, not the onid
-				# think about how to represent this
-				query = 'SELECT scheduled_days, scheduled_start_time, scheduled_end_time, scheduled_start_date, scheduled_end_date FROM class AS cls INNER JOIN instructor AS ins ON ins.id = cls.instructor WHERE ins.username = "' + user + '"'
-				sql.execute(query)
-				for row in sql.fetchall():
-					startTime = fixTime(row[1])
-					endTime = fixTime(row[2])
-					start = fixDate(row[3])
-					end = fixDate(row[4])
-					startDate = setDateTime(start, startTime)
-					endDate = setDateTime(end, endTime)
-					user.addClassTimeBlock(parseDays(row[0]), startTime, endTime, start, end)
+				# db = MySQLdb.connect(host=host,user=username,passwd=passwd,db=database)
+				# sql = db.cursor()
+				# # User is coming in as jonesjo@onid.oregonstate.edu, the email, not the onid
+				# # think about how to represent this
+				# query = 'SELECT scheduled_days, scheduled_start_time, scheduled_end_time, scheduled_start_date, scheduled_end_date FROM class AS cls INNER JOIN instructor AS ins ON ins.id = cls.instructor WHERE ins.username = "' + user + '"'
+				# sql.execute(query)
+				# for row in sql.fetchall():
+				# 	startTime = fixTime(row[1])
+				# 	endTime = fixTime(row[2])
+				# 	start = fixDate(row[3])
+				# 	end = fixDate(row[4])
+				# 	startDate = setDateTime(start, startTime)
+				# 	endDate = setDateTime(end, endTime)
+				# 	user.addClassTimeBlock(parseDays(row[0]), startTime, endTime, start, end)
 				people.append(temp)
 				users.append(user)
 			# meeting object
@@ -656,9 +659,9 @@ class mainGui:
 		self.gui.redrawGUI(self.tab.tab)
 	
 	def buildWindows(self):
-		self.gui.addUIElement('button', 'spec', self.tab, y=6, x=8, text='Search Specfic Date(s)')
-		self.gui.addUIElement('button', 'meeting', self.tab, y=11, x=8, text='Search Range of Dates')
-		self.gui.addUIElement('button', 'users', self.tab, y=16, x=8, text='Find by Available Users')
+		self.gui.addUIElement('button', 'spec', self.tab, y=6, x=8, text='Search Time Frame')
+		self.gui.addUIElement('button', 'users', self.tab, y=11, x=8, text='Search by Users')
+		self.gui.addUIElement('button', 'meeting', self.tab, y=16, x=8, text='Schedule Meeting')
 
 	def mainLoop(self):	
 		keyMaps = {ord('x'): 'self.gui.close()\nexit()',
@@ -721,7 +724,8 @@ if __name__ == "__main__":
 	mins = [str(x).zfill(2) for x in range(0,60,15)]
 	lengths = [str(x) for x in range(15,375,15)]
 	selected = []
-	domains =['ONID Username', '@gmail.com', '@onid.oregonstate.edu', 'eecs.oregonstate.edu']
+	# 'ONID Username', 
+	domains =['@gmail.com', '@onid.oregonstate.edu', '@eecs.oregonstate.edu']
 	users = ['burrows.danny@gmail.com', 'jonesjo@onid.oregonstate.edu', 'clampitl@onid.oregonstate.edu', 'jjames83@gmail.com']
 	#users = [ x for x in range(0,50)]
 	# test = GUI()

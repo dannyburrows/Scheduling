@@ -3,7 +3,7 @@ from calendarAPI import connection
 from datetime import *
 from timemanip import *
 
-import time
+#import time
 
 class meeting:
 	"""
