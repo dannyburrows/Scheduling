@@ -133,6 +133,9 @@ class unavailTime:
     except:
       return False
 
+  def printBlock(self):
+    print self.start, self.end
+
 class person:
   """
     person
@@ -195,6 +198,21 @@ class person:
     # find the day of the year for the ending day to check
     eDay = convertToDatetime(endDay)
     eDayOfYear = getDayOfYear(eDay)
+    # there exists a fringe case where the end time is not divisible by 15 evenly that was causing an issue, this corrects that
+    # def getTotalMinutes(hours, mins):
+    #   return hours * 60 + mins
+
+    tempEnd = getTotalMinutes(classEnd[:2], classEnd[3:])
+    #print classEnd[:2], classEnd[3:]
+    #print tempEnd
+    while tempEnd % 15 != 0:
+      tempEnd = tempEnd + 5
+      #classEnd = str(tempEnd)
+    
+    classEnd = convertTimeToString(tempEnd)
+    # print tempEnd
+    # print classEnd
+    # exit()
 
     # loopDay is the modified day of the year that is used to check against the days of the week
     loopDay = sDay

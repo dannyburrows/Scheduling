@@ -172,8 +172,8 @@ def main():
 	# of a user to ensure connections
 	service = connection()
 	# this is the expected format of the testing times, for this particular implementation
-	start = "04/15/2014 10:00"
-	stop = "04/20/2014 18:00"
+	start = "03/31/2014 09:00"
+	stop = "06/06/2014 09:50"
 	# length will be 15 or greater
 	length = 60
 	userWindow = False
@@ -187,14 +187,18 @@ def main():
 	users.append(person("jonesjo@onid.oregonstate.edu", length, service.service))
 	users.append(person("burrows.danny@gmail.com", length, service.service))
 
-	classDays = "135" # M W F
-	classStart = "10:00:00" # 10 AM
-	classEnd = "11:30:00" # 1130 AM
+	classDays = "5" # M W F
+	classStart = "09:00:00" # 10 AM
+	classEnd = "09:50:00" # 1130 AM
 	# addClassTimeBlock(self, classDays, classStart, classEnd, startDay, endDay)
 	# start = datetime.now()
 	# end = start + timedelta(days=7)
 	# start = getStringDate(start), end = getStringDate(end)
 	users[0].addClassTimeBlock(classDays, classStart, classEnd, start, stop)
+	for x in users[0].blockedTimes:
+		x.printBlock()
+
+	exit()
 
 	users.append(person("clampitl@onid.oregonstate.edu", length, service.service))
 	users.append(person("jjames83@gmail.com", length, service.service))

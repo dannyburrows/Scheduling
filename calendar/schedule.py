@@ -13,7 +13,7 @@ from interface import *
 from timemanip import *
 from curseswrapper import *
 
-#import MySQLdb
+import MySQLdb
 
 def _addDateTime(self):
 	"""
@@ -70,11 +70,11 @@ def getInput(self):
 	# the database
 	##################################
 	domainWin.modified = True # the input box is causing an issue with deleting the the box here, fix it later
-	domain = domainWin.getSelectedValue() # get the text from the domain name
+	#domain = domainWin.getSelectedValue() # get the text from the domain name
 	if not text:
 		self.gui.addNotification(self.warningY, self.warningX, 'Please input a valid user name')
 		return
-	user = text + domain
+	user = text #+ domain
 	if user in self.selected: # check to ensure user is not being doubly added
 		self.gui.addNotification(self.warningY, self.warningX, 'User already added')
 		return
@@ -344,37 +344,36 @@ class timeFrame:
 			users = []
 			# create people array
 			for user in self.gui.windows[index].items:
-				temp = person(user, int(date['length']), service.service)
+				temp = person(user + "@onid.oregonstate.edu", int(date['length']), service.service)
 				if temp.errorFlag:
 					self.gui.addNotification(self.warningY, self.warningX, temp.errorMsg)
 					return False
-				###########################################
-				# TODO
-				# Add database query here to add blocked times for users.
-				# The syntax is as follows:
-				# THIS QUERY WILL BE DIFFERENT
-				# database.query('SELECT classDays, classStart, classEnd FROM classes INNER JOIN class.ID ON class.ID = professor.ID WHERE professor.username ="user" ')
-				# test.addClassTimeBlock(classDays, classStart, classEnd, date['start'], date['stop'])
-				###########################################
+				
 				host = 'localhost'
 				username = 'root'
 				passwd = ''
 				database = 'Scheduling'
 
-				# db = MySQLdb.connect(host=host,user=username,passwd=passwd,db=database)
-				# sql = db.cursor()
-				# # User is coming in as jonesjo@onid.oregonstate.edu, the email, not the onid
-				# # think about how to represent this
-				# query = 'SELECT scheduled_days, scheduled_start_time, scheduled_end_time, scheduled_start_date, scheduled_end_date FROM class AS cls INNER JOIN instructor AS ins ON ins.id = cls.instructor WHERE ins.username = "' + user + '"'
-				# sql.execute(query)
-				# for row in sql.fetchall():
-				# 	startTime = fixTime(row[1])
-				# 	endTime = fixTime(row[2])
-				# 	start = fixDate(row[3])
-				# 	end = fixDate(row[4])
-				# 	startDate = setDateTime(start, startTime)
-				# 	endDate = setDateTime(end, endTime)
-				# 	user.addClassTimeBlock(parseDays(row[0]), startTime, endTime, start, end)
+				db = MySQLdb.connect(host=host,user=username,passwd=passwd,db=database)
+				sql = db.cursor()
+				# User is coming in as jonesjo@onid.oregonstate.edu, the email, not the onid
+				# think about how to represent this
+				query = 'SELECT scheduled_days, scheduled_start_time, scheduled_end_time, scheduled_start_date, scheduled_end_date FROM class AS cls INNER JOIN instructor AS ins ON ins.id = cls.instructor WHERE ins.username = "' + user + '"'
+				sql.execute(query)
+				oniduser = user + "@onid.oregonstate.edu"
+				temp = person(oniduser, int(date['length']), service.service)
+				for row in sql.fetchall():
+					classDays = parseDays(row[0])
+					classStart = fixTime(row[1])
+					classEnd = fixTime(row[2])
+					start = fixDate(row[3])
+					end = fixDate(row[4])
+					start = setDateTime(start, classStart)
+					end = setDateTime(end, classEnd)
+					# print start, end
+					#print (parseDays(row[0]))#, startTime, endTime, startDate, endDate)
+					#print startTime, endTime, startDate, endDate
+					temp.addClassTimeBlock(classDays, classStart, classEnd, start, end)
 				people.append(temp)
 				users.append(user)
 			# meeting object
@@ -571,7 +570,8 @@ class availableUsers:
 			people = []
 			# create people array
 			for user in self.gui.windows[index].items:
-				temp = person(user, int(date['length']), service.service)
+				oniduser = user + "@onid.oregonstate.edu"
+				temp = person(oniduser, int(date['length']), service.service)
 				###########################################
 				# TODO
 				# Add database query here to add blocked times for users.
@@ -634,7 +634,7 @@ class userResults:
 		tempWin.label = True
 		for x in self.dates:
 			tempWin.selection.append(0)
-		self.gui.addUIElement('list', 'users', self.tab, (maxY - 8), 50, 5, 2, self.users, True, True)
+		#self.gui.addUIElement('list', 'users', self.tab, (maxY - 8), 50, 5, 2, self.users, True, True)
 
 		self.gui.addUIElement('button', 'addSlot', self.tab, y=1, x=1, text='(A)dd Time Slot')
 		self.gui.addUIElement('button', 'back', self.tab, y=1, x=21, text='(B)ack')

@@ -70,6 +70,9 @@ def convertToDatetimeFull(input):
 	"""
 		Accepts a formatted string, returns datetime with hours, mins and secs
 	"""
+	# corrects an odd case where Google is returning time without seconds. Happens rarely but still was throwing an occasional error
+	if len(input) == 16:
+		input = input + ":00"
 	return datetime.strptime(input, "%Y-%m-%d %H:%M:%S")
 
 def getCorrectedTime(input):
@@ -91,6 +94,12 @@ def simpleParse(input):
 	else:
 		ending = input[11:]
 	return input[0:10] + " " + ending
+
+def convertTimeToString(input):
+	hours = int(input) / 60
+	mins = int(input) % 60
+	return str(hours).zfill(2) + ":" + str(mins).zfill(2)
+
 #################################################
 #	       Displaying and calculations			#
 #################################################
@@ -112,8 +121,7 @@ def printTime(input, milTime = False):
 	return time
 
 def getTotalMinutes(hours, mins):
-	return hours * 60 + mins
-
+	return int(hours) * 60 + int(mins)
 
 def fixDate(input):
 	input = input.split('/')
