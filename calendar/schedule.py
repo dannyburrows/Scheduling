@@ -34,7 +34,7 @@ def _addDateTime(self):
 	else:
 		self.gui.addNotification(self.warningY, self.warningX, "Date and time already added", 5)
 
-def getInput(self):
+def getInput(self, single=False):
 	"""
 	Form control for the user name input. Turns the cursor back on and echos the typed text.
 	Pulls the domain and adds the input text, concatenating the two and appending to the selected array.
@@ -70,13 +70,19 @@ def getInput(self):
 		self.gui.addNotification(self.warningY, self.warningX, 'Please input a valid user name')
 		return
 	user = text #+ domain
-	if user in self.selected: # check to ensure user is not being doubly added
+	if not single and user in self.selected: # check to ensure user is not being doubly added
 		self.gui.addNotification(self.warningY, self.warningX, 'User already added')
 		return
 	# updates the selected box and prepares for refresh		
-	self.selected.append(user) # return text
-	changeWin = self.gui.getWin('selectedUsers')
-	changeWin.changeSelection(0)
+	if not single:
+		self.selected.append(user) # return text
+		changeWin = self.gui.getWin('selectedUsers')
+	else:
+		self.user = user
+		changeWin = self.gui.getWin('user')
+		changeWin.text = user
+
+	changeWin.modified = True
 
 	return True
 
@@ -156,6 +162,11 @@ def goHome(self):
 	self.gui.cleanGUI()
 	mainGui().mainLoop()
 
+def setCheckBox(self, window):
+	win = self.gui.getWin(window)
+	win.checked = not win.checked
+	win.modified = True
+
 class whenToMeet:
 	def __init__(self):
 		self.gui = GUI()
@@ -169,8 +180,8 @@ class whenToMeet:
 		self.locations = [] # x,y coords of pads
 
 		self.tab = tabstop()
-		self.warningY = 28
-		self.warningX = 62
+		self.warningY = 23
+		self.warningX = 54
 		self.buildWindows()
 		self.tab.tab = 0
 		self.gui.drawGUI(self.tab)
@@ -199,11 +210,6 @@ class whenToMeet:
 		"""
 		Sets up the locations for windows based on sizes of the window.
 		"""
-		# selected and username:	50 wide	Y height
-		# dates/times: 				6 wide	3 height
-		# length: 					8 wide	3 height
-		# buttons: 					51 wide	3 height
-		# y = 36, x = 112
 		maxY, maxX = self.gui.screen.getmaxyx()
 		interval = maxY / 10
 		# case stack all on top of each other
@@ -250,8 +256,7 @@ class whenToMeet:
 
 		maxY, maxX = self.gui.screen.getmaxyx()
 		interval = maxY / 10
-		self.warningY = (interval * 3) + 15
-		self.gui.addLabel(y=1,x=1,input="When can I schedule the meeting(s)?")
+		self.gui.addLabel(y=1,x=1,input=" When can I schedule the meeting(s)? ")
 		# Listing windows
 		y,x = self.gui.getLocation(self.locations, 'inputUser')
 		self.gui.addLabel(y=y-1,x=x, input=" Enter an ONID (u)sername ")
@@ -528,9 +533,8 @@ class whoToExpect:
 		self.locations = []
 		# array of tuples, taking the type: { 'date': 'MM/DD/YYYY', 'times': ['MM:HH'] }
 		self.dates = []
-		# will hold the dates to check for multiple dates and times
-		self.warningY = 28
-		self.warningX = 62
+		self.warningY = 20
+		self.warningX = 54
 		self.buildWindows()
 		self.tab.tab = 0
 		self.gui.drawGUI(self.tab)
@@ -555,14 +559,8 @@ class whoToExpect:
 		"""
 		Sets up the locations for windows based on sizes of the window.
 		"""
-		# selected and username:	50 wide	Y height
-		# dates/times: 				6 wide	3 height
-		# length: 					8 wide	3 height
-		# buttons: 					51 wide	3 height
-		# y = 36, x = 112
 		maxY, maxX = self.gui.screen.getmaxyx()
 		interval = maxY / 10
-		# case stack all on top of each other
 		self.locations.append({'win': 'inputUser', 'x': 1, 'y': 8})
 		self.locations.append({'win': 'selectedUsers', 'x': 1, 'y': 13})
 		# make the height of selectedUsers only 3 intervals tall
@@ -587,6 +585,7 @@ class whoToExpect:
  		#changeX = maxX / 10
 		interval = maxY / 10
 
+		self.gui.addLabel(y=1,x=1,input=" Who can I expect at the meeting(s)? ")
 		# User input and remove data
 		y,x = self.gui.getLocation(self.locations, 'inputUser')
 		self.gui.addLabel(y=y-1, x=x+1, input=" Enter a (u)sername ")
@@ -827,55 +826,51 @@ class userSchedule:
 		self.user = ""
 		# will hold the dates to check for multiple dates and times
 		self.warningY = 28
-		self.warningX = 62
+		self.warningX = 42
 		self.buildWindows()
 		self.setSelections()
 		self.tab.tab = 0
 		self.gui.drawGUI(self.tab)
 		self.gui.redrawGUI(self.tab.tab)
-		self.enterMaps = {'submit': 'self.submitRequest()',
+		self.enterMaps = {
+			'submit': 'self.submitRequest()',
 			'exit': 'self.gui.close()\nexit()',
 			'back': 'self._goBack()',
-			'addSlot': '_addDateTime(self)',
-			'selectedUsers': '_removeItem(self, self.selected, "selectedUsers", "No users to remove")',
-			'timeDates': '_removeItem(self, self.dates, "timeDates", "No values to remove")',
-			'inputUser': 'getInput(self)',
-			'startH': '_addDateTime(self)',
-			'startM': '_addDateTime(self)',
-			'startDateM': '_addDateTime(self)',
-			'startDateD': '_addDateTime(self)',
-			'startDateY': '_addDateTime(self)',
-			'length': '_addDateTime(self)',
-			'inputUser': 'getInput(self)'
+			'user': 'self.removeUser()',
+			'inputUser': 'getInput(self, True)',
+			'saneDefault': 'setCheckBox(self, "saneDefault")'
 		}
+
+	def removeUser(self):
+		win = self.gui.getWin('user')
+		if self.user:
+			self.user = ""
+		else:
+			self.gui.addNotification(self.warningY, self.warningX, "No user to remove", 5)
+		win.text = self.user
+		win.modified = True
 
 	def _setOrientation(self):
 		"""
 		Sets up the locations for windows based on sizes of the window.
 		"""
-		# selected and username:	50 wide	Y height
-		# dates/times: 				6 wide	3 height
-		# length: 					8 wide	3 height
-		# buttons: 					51 wide	3 height
-		# y = 36, x = 112
 		maxY, maxX = self.gui.screen.getmaxyx()
-		interval = maxY / 10
 		# case stack all on top of each other
 		self.locations.append({'win': 'inputUser', 'x': 1, 'y': 8})
 		self.locations.append({'win': 'user', 'x': 1, 'y': 13})
 		# make the height of selectedUsers only 3 intervals tall
-		self.locations.append({'win': 'startDateM', 'x': 54, 'y': 8})
-		self.locations.append({'win': 'startDateD', 'x': 59, 'y': 8})
-		self.locations.append({'win': 'startDateY', 'x': 63, 'y': 8})
-		self.locations.append({'win': 'length', 'x': 54, 'y': 12})
-		self.locations.append({'win': 'startH', 'x': 54, 'y': 16})
-		self.locations.append({'win': 'startM', 'x': 58, 'y': 16})
-		self.locations.append({'win': 'endH', 'x': 54, 'y': 20})
-		self.locations.append({'win': 'endM', 'x': 58, 'y': 20})
+		self.locations.append({'win': 'startDateM', 'x': 42, 'y': 8})
+		self.locations.append({'win': 'startDateD', 'x': 47, 'y': 8})
+		self.locations.append({'win': 'startDateY', 'x': 51, 'y': 8})
+		self.locations.append({'win': 'length', 'x': 42, 'y': 12})
+		self.locations.append({'win': 'startH', 'x': 42, 'y': 16})
+		self.locations.append({'win': 'startM', 'x': 46, 'y': 16})
+		self.locations.append({'win': 'endH', 'x': 42, 'y': 20})
+		self.locations.append({'win': 'endM', 'x': 46, 'y': 20})
 		self.locations.append({'win': 'addSlot', 'x': 1, 'y': 3})
-		self.locations.append({'win': 'submit', 'x': 21, 'y': 3})
-		self.locations.append({'win': 'back', 'x': 33, 'y': 3})
-		self.locations.append({'win': 'exit', 'x': 44, 'y': 3})
+		self.locations.append({'win': 'submit', 'x': 1, 'y': 3})
+		self.locations.append({'win': 'back', 'x': 13, 'y': 3})
+		self.locations.append({'win': 'exit', 'x': 24, 'y': 3})
 		self.locations.append({'win': 'saneDefault', 'x': 1, 'y': 18})
 
 	def setSelections(self):
@@ -905,17 +900,19 @@ class userSchedule:
 		maxY, maxX = self.gui.screen.getmaxyx()
 		interval = maxY / 10
 		self.warningY = (interval * 3) + 15
-		self.gui.addLabel(y=1,x=1,input="When is the user available?")
+		self.gui.addLabel(y=1,x=1,input=" When is the user available? ")
 		# Listing windows
 		y,x = self.gui.getLocation(self.locations, 'inputUser')
 		self.gui.addLabel(y=y-1,x=x, input=" Enter an ONID (u)sername ")
 		self.gui.addUIElement('input', 'inputUser', self.tab, self.locations, width=35)
 
 		y,x = self.gui.getLocation(self.locations, 'user')
-		self.gui.addLabel(y=y-1, x=x, input=" (C)urrent User ")
-		self.gui.addUIElement('button', 'user', self.tab, self.locations, text=self.user, box=False, highlighted=True)
+		self.gui.addLabel(y=y-1, x=x, input=" (C)urrently Selected User ")
+		self.gui.addUIElement('textLine', 'user', self.tab, self.locations, width=35, text=self.user, box=True, highlighted=True)
 
-		self.gui.addUIElement('checkbox', 'saneDefault', self.tab, self.locations, text=" Check for next week ")
+		y,x = self.gui.getLocation(self.locations, 'saneDefault')
+		self.gui.addLabel(y=y-1, x=x, input=" C(h)eck week's schedule ")
+		self.gui.addUIElement('checkbox', 'saneDefault', self.tab, self.locations, text=" Next 7 days ")
 
 		# Variables
 		y,x = self.gui.getLocation(self.locations, 'startDateM')
@@ -928,19 +925,19 @@ class userSchedule:
 		self.gui.addLabel(index='startDateY', input='Year', justify='right', color=4)
 
 		y,x = self.gui.getLocation(self.locations, 'length')
-		self.gui.addLabel(y=y-1, x=x+1, input='(L)ength:')
+		self.gui.addLabel(y=y-1, x=x+1, input=' (L)ength: ')
 		self.gui.addUIElement('list', 'length', self.tab, self.locations, 3, 8, lengths, False, False)
 		self.gui.addLabel(index='length', input='Min', justify='center', color=4)
 
 		y,x = self.gui.getLocation(self.locations, 'startH')
-		self.gui.addLabel(y=y-1, x=x+1, input='(S)tart Time:')
+		self.gui.addLabel(y=y-1, x=x+1, input=' (S)tart Time: ')
 		self.gui.addUIElement('list', 'startH', self.tab, self.locations, 3, 6, hours, False, False)
 		self.gui.addUIElement('list', 'startM', self.tab, self.locations, 3, 8, mins, False, False)
 		self.gui.addLabel(index='startH', input='Hr', justify='center', color=4)
 		self.gui.addLabel(index='startM', input='Min', justify='center', color=4)
 
 		y,x = self.gui.getLocation(self.locations, 'endH')
-		self.gui.addLabel(y=y-1, x=x+1, input='End (T)ime:')
+		self.gui.addLabel(y=y-1, x=x+1, input=' End (T)ime: ')
 		self.gui.addUIElement('list', 'endH', self.tab, self.locations, 3, 6, hours, box=False, highlighted=False)
 		self.gui.addUIElement('list', 'endM', self.tab, self.locations, 3, 8, mins, False, False)
 		self.gui.addLabel(index='endH', input='Hr', justify='center', color=4)
@@ -959,15 +956,14 @@ class userSchedule:
 		keyMaps = {ord('x'): '_jumpToWin(self, "exit")',
 				ord('\t'): '_moveTab(self, +1)',
 				ord('\n'): 'processEnter(self)',
-				ord('a'): '_jumpToWin(self, "addSlot")',
 				ord('b'): '_jumpToWin(self, "back")',
-				ord('c'): '_jumpToWin(self, "selectedUsers")',
-				ord('d'): '_jumpToWin(self, "domain")',
-				ord('e'): '_jumpToWin(self, "timeDates")',
+				ord('c'): '_jumpToWin(self, "user")',
+				ord('h'): '_jumpToWin(self, "saneDefault")',
 				ord('l'): '_jumpToWin(self, "length")',
 				ord('q'): '_jumpToWin(self, "submit")',
-				ord('t'): '_jumpToWin(self, "startDateM")',
+				ord('r'): '_jumpToWin(self, "startDateM")',
 				ord('s'): '_jumpToWin(self, "startH")',
+				ord('t'): '_jumpToWin(self, "endM")',
 				ord('u'): '_jumpToWin(self, "inputUser")',
 				curses.KEY_DOWN: '_processUpDown(self, +1)',
 				curses.KEY_UP: '_processUpDown(self, -1)',
@@ -980,7 +976,6 @@ class userSchedule:
 				exec(keyMaps[event])
 
 			self.gui.redrawGUI(self.tab.tab)
-
 
 class mainGui:
 	"""
@@ -1012,9 +1007,9 @@ class mainGui:
 		# print maxY, maxX
 		# exit()
 		self._setLocations()
-		self.gui.addUIElement('button', 'spec', self.tab, self.locations, text='Search Time Frame')
-		self.gui.addUIElement('button', 'users', self.tab, self.locations, text='Search by Users')
-		self.gui.addUIElement('button', 'meeting', self.tab, self.locations, text='Schedule Meeting')
+		self.gui.addUIElement('button', 'spec', self.tab, self.locations, text='Schedule multiple users/multiple times')
+		self.gui.addUIElement('button', 'users', self.tab, self.locations, text='Find available users, specific time')
+		self.gui.addUIElement('button', 'meeting', self.tab, self.locations, text='View user\'s schedule')
 
 	def mainLoop(self):	
 		keyMaps = {ord('x'): 'self.gui.close()\nexit()',

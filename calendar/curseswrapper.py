@@ -325,6 +325,9 @@ class GUI:
 		elif elem == 'checkbox':
 			self.windows.append(checkbox(y, x, text, tab.maxTab, box, highlighted))
 			self.mapWindows.append({mapping:tab.maxTab})
+		elif elem == 'textLine':
+			self.windows.append(textLine(y, x, width, text, tab.maxTab, box, highlighted))
+			self.mapWindows.append({mapping:tab.maxTab})
 		tab.incTab()
 
 	def drawGUI(self, tab):
@@ -542,6 +545,15 @@ class inputBox(GUIPad):
 class button(GUIPad):
 	def __init__(self, y, x, text, tab, box=True, highlighted=True):
 		width = len(text) + 4 # dynamic size of button
+		height = 3 # basic height of button
+		GUIPad.__init__(self, height, width, y, x, tab, highlighted)
+		self.box = box 	# tracks whether the pad should be boxed or not
+		self.text = text
+		self.scrollable = False
+		self.display = displayStatic
+
+class textLine(GUIPad):
+	def __init__(self, y, x, width, text, tab, box=True, highlighted=True):
 		height = 3 # basic height of button
 		GUIPad.__init__(self, height, width, y, x, tab, highlighted)
 		self.box = box 	# tracks whether the pad should be boxed or not
