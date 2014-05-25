@@ -12,7 +12,7 @@
 from interface import *
 from timemanip import *
 from curseswrapper import *
-
+import time
 import MySQLdb
 
 def _addDateTime(self):
@@ -58,19 +58,14 @@ def getInput(self):
 	# change the input back to its original state
 	win.highlighted = True
 	win.modified = True
-	domainWin = self.gui.getWin('domain')
-	##################################
-	# a big thing here: 
-	# if the domain is ONID Username
-	# 
-	# query database that has ONIDs and emails, if not in db, assume @onid.oregonstate.edu
-	# 
-	# we need to run a query that
-	# gets the public calendar from
-	# the database
-	##################################
-	domainWin.modified = True # the input box is causing an issue with deleting the the box here, fix it later
-	#domain = domainWin.getSelectedValue() # get the text from the domain name
+	# corrects deleting the dates on accepting input
+	temp = self.gui.getWin('startDateM')
+	temp.modified = True
+	temp = self.gui.getWin('startDateD')
+	temp.modified = True
+	temp = self.gui.getWin('startDateY')
+	temp.modified = True
+	# warnings
 	if not text:
 		self.gui.addNotification(self.warningY, self.warningX, 'Please input a valid user name')
 		return
@@ -136,6 +131,7 @@ def _moveTab(self, direction):
 
 def _removeItem(self, items, window, warningMsg):
 	"""
+	On enter press, removes item from the window
 	"""
 	itemWin = self.gui.getWin(window)
 	value = itemWin.getSelectedValue()
@@ -153,15 +149,24 @@ def processEnter(self):
 	if event in self.enterMaps:
 		exec(self.enterMaps[event])
 
-class timeFrame:
+def goHome(self):
+	"""
+	Jump back to original screen
+	"""
+	self.gui.cleanGUI()
+	mainGui().mainLoop()
+
+class whenToMeet:
 	def __init__(self):
 		self.gui = GUI()
+		self.gui.screen.clear()
 		# deletes gui images already mapped
 		self.gui.windows = []
 		self.gui.mapWindows = []
 		# lists for items for this particular use case
 		self.selected = []
 		self.dates = []
+		self.locations = [] # x,y coords of pads
 
 		self.tab = tabstop()
 		self.warningY = 28
@@ -171,7 +176,8 @@ class timeFrame:
 		self.gui.drawGUI(self.tab)
 		self.setSelections()
 		self.gui.redrawGUI(self.tab.tab)
-		self.enterMaps = {'submit': 'self.submitRequest()',
+		self.enterMaps = {
+			'submit': 'self.submitRequest()',
 			'exit': 'self.gui.close()\nexit()',
 			'back': 'self._goBack()',
 			'addSlot': '_addDateTime(self)',
@@ -189,6 +195,35 @@ class timeFrame:
 			'inputUser': 'getInput(self)'
 		}
 
+	def _setOrientation(self):
+		"""
+		Sets up the locations for windows based on sizes of the window.
+		"""
+		# selected and username:	50 wide	Y height
+		# dates/times: 				6 wide	3 height
+		# length: 					8 wide	3 height
+		# buttons: 					51 wide	3 height
+		# y = 36, x = 112
+		maxY, maxX = self.gui.screen.getmaxyx()
+		interval = maxY / 10
+		# case stack all on top of each other
+		self.locations.append({'win': 'inputUser', 'x': 1, 'y': 8})
+		self.locations.append({'win': 'selectedUsers', 'x': 1, 'y': 13})
+		# make the height of selectedUsers only 3 intervals tall
+		self.locations.append({'win': 'timeDates', 'x': 1, 'y': ((interval * 3) + 15)})
+		self.locations.append({'win': 'startDateM', 'x': 54, 'y': 8})
+		self.locations.append({'win': 'startDateD', 'x': 59, 'y': 8})
+		self.locations.append({'win': 'startDateY', 'x': 63, 'y': 8})
+		self.locations.append({'win': 'length', 'x': 54, 'y': 12})
+		self.locations.append({'win': 'startH', 'x': 54, 'y': 16})
+		self.locations.append({'win': 'startM', 'x': 58, 'y': 16})
+		self.locations.append({'win': 'endH', 'x': 54, 'y': 20})
+		self.locations.append({'win': 'endM', 'x': 58, 'y': 20})
+		self.locations.append({'win': 'addSlot', 'x': 1, 'y': 3})
+		self.locations.append({'win': 'submit', 'x': 21, 'y': 3})
+		self.locations.append({'win': 'back', 'x': 33, 'y': 3})
+		self.locations.append({'win': 'exit', 'x': 44, 'y': 3})
+
 	def setSelections(self):
 		"""
 		Sets default selects to values that make sense
@@ -196,7 +231,6 @@ class timeFrame:
 		now = datetime.now()
 		day = int(now.strftime("%d"))
 		month = int(now.strftime("%m"))
-		year = int(now.strftime("%Y"))
 		win = self.gui.getWin('startDateM')
 		win.selection = (month - 1)
 		win = self.gui.getWin('startDateD')
@@ -209,59 +243,63 @@ class timeFrame:
 		win.selection = 3
 
 	def buildWindows(self):
-		# quickly allows me to move the entirety of the input UI
-		y = 4
-		x = 60
+		"""
+		Creates the windows to be displayed by the GUI
+		"""
+		self._setOrientation()
 
 		maxY, maxX = self.gui.screen.getmaxyx()
-		changeX = maxX / 10
-		changeY = maxY / 10
-		self.warningY = (changeY * 3) + (y + 11)
-		
-		# add all the windows that will contain lists of information
+		interval = maxY / 10
+		self.warningY = (interval * 3) + 15
+		self.gui.addLabel(y=1,x=1,input="When can I schedule the meeting(s)?")
 		# Listing windows
-		self.gui.addLabel(y=5,x=6, input=" Enter a (u)sername ")
-		self.gui.addUIElement('input', 'inputUser', self.tab, y=6, x=4, width=25)
+		y,x = self.gui.getLocation(self.locations, 'inputUser')
+		self.gui.addLabel(y=y-1,x=x, input=" Enter an ONID (u)sername ")
+		self.gui.addUIElement('input', 'inputUser', self.tab, self.locations, width=35)
 
-		self.gui.addLabel(y=5, x=32, input=" (D)omain ")
-		self.gui.addUIElement('list', 'domain', self.tab, 3, 25, 6, 30, domains, True, True)
-		
-		self.gui.addLabel(y=10, x=6, input=" (C)urrently Addded Users ")
-		self.gui.addUIElement('list', 'selectedUsers', self.tab, int(changeY * 5), 50, 11, 4, self.selected, True, True)
+		y,x = self.gui.getLocation(self.locations, 'selectedUsers')
+		self.gui.addLabel(y=y-1, x=x, input=" (C)urrently Addded Users ")
+		self.gui.addUIElement('list', 'selectedUsers', self.tab, self.locations, int(interval * 3), 35, self.selected, True, True)
+
+		y,x = self.gui.getLocation(self.locations, 'timeDates')
+		self.gui.addLabel(y=y-1, x=x, input=' S(e)lected Dates and Times ', color=1)
+		self.gui.addUIElement('timeWin', 'timeDates', self.tab, self.locations, int(interval * 3), 50, self.dates, True, True)
+
 
 		# Variables
-		self.gui.addLabel(y=y+2, x=x-2, input=" Sta(r)t date: ")
-		self.gui.addUIElement('list', 'startDateM', self.tab, 3, 6, y+1, x+12, months, False, False)
-		self.gui.addUIElement('list', 'startDateD', self.tab, 3, 6, y+1, x+17, days, False, False)
-		self.gui.addUIElement('list', 'startDateY', self.tab, 3, 6, y+1, x+22, years, False, False)
+		y,x = self.gui.getLocation(self.locations, 'startDateM')
+		self.gui.addLabel(y=y-1, x=x+1, input=" Sta(r)t date: ")
+		self.gui.addUIElement('list', 'startDateM', self.tab, self.locations, 3, 6, months, False, False)
+		self.gui.addUIElement('list', 'startDateD', self.tab, self.locations, 3, 6, days, False, False)
+		self.gui.addUIElement('list', 'startDateY', self.tab, self.locations, 3, 6, years, False, False)
 		self.gui.addLabel(index='startDateM', input='Mon', justify='center', color=4)
 		self.gui.addLabel(index='startDateD', input='Day', justify='center', color=4)
 		self.gui.addLabel(index='startDateY', input='Year', justify='right', color=4)
 
-		self.gui.addLabel(y=y+2, x=x+31, input='(L)ength:')
-		self.gui.addUIElement('list', 'length', self.tab, 3, 8, y+1, x+41, lengths, False, False)
+		y,x = self.gui.getLocation(self.locations, 'length')
+		self.gui.addLabel(y=y-1, x=x+1, input='(L)ength:')
+		self.gui.addUIElement('list', 'length', self.tab, self.locations, 3, 8, lengths, False, False)
 		self.gui.addLabel(index='length', input='Min', justify='center', color=4)
 
-		self.gui.addLabel(y=y+5, x=x-1, input='(S)tart Time:')
-		self.gui.addUIElement('list', 'startH', self.tab, 3, 6, y+4, x+12, hours, False, False)
-		self.gui.addUIElement('list', 'startM', self.tab, 3, 8, y+4, x+17, mins, False, False)
+		y,x = self.gui.getLocation(self.locations, 'startH')
+		self.gui.addLabel(y=y-1, x=x+1, input='(S)tart Time:')
+		self.gui.addUIElement('list', 'startH', self.tab, self.locations, 3, 6, hours, False, False)
+		self.gui.addUIElement('list', 'startM', self.tab, self.locations, 3, 8, mins, False, False)
 		self.gui.addLabel(index='startH', input='Hr', justify='center', color=4)
 		self.gui.addLabel(index='startM', input='Min', justify='center', color=4)
 
-		self.gui.addLabel(y=y+5, x=x+29, input='End (T)ime:')
-		self.gui.addUIElement('list', 'endH', self.tab, 3, 6, y+4, x+41, hours, box=False, highlighted=False)
-		self.gui.addUIElement('list', 'endM', self.tab, 3, 8, y+4, x+46, mins, False, False)
+		y,x = self.gui.getLocation(self.locations, 'endH')
+		self.gui.addLabel(y=y-1, x=x+1, input='End (T)ime:')
+		self.gui.addUIElement('list', 'endH', self.tab, self.locations, 3, 6, hours, box=False, highlighted=False)
+		self.gui.addUIElement('list', 'endM', self.tab, self.locations, 3, 8, mins, False, False)
 		self.gui.addLabel(index='endH', input='Hr', justify='center', color=4)
 		self.gui.addLabel(index='endM', input='Min', justify='center', color=4)
 
-		self.gui.addLabel(y=y+9, x=x+2, input='S(e)lected Dates and Times', color=1)
-		self.gui.addUIElement('timeWin', 'timeDates', self.tab, int(changeY *3), 50, y+10, x, self.dates, True, True)
-
 		# Buttons
-		self.gui.addUIElement('button', 'addSlot', self.tab, y=1, x=1, text='(A)dd Time Slot')
-		self.gui.addUIElement('button', 'submit', self.tab, y=1, x=21, text='(Q)uery')
-		self.gui.addUIElement('button', 'back', self.tab, y=1, x=33, text='(B)ack')
-		self.gui.addUIElement('button', 'exit', self.tab, y=1, x=44, text='E(x)it')
+		self.gui.addUIElement('button', 'addSlot', self.tab, self.locations, text='(A)dd Time Slot')
+		self.gui.addUIElement('button', 'submit', self.tab, self.locations, text='(Q)uery')
+		self.gui.addUIElement('button', 'back', self.tab, self.locations, text='(B)ack')
+		self.gui.addUIElement('button', 'exit', self.tab, self.locations, text='E(x)it')
 
 	def mainLoop(self):
 		"""
@@ -275,7 +313,6 @@ class timeFrame:
 				ord('a'): '_jumpToWin(self, "addSlot")',
 				ord('b'): '_jumpToWin(self, "back")',
 				ord('c'): '_jumpToWin(self, "selectedUsers")',
-				ord('d'): '_jumpToWin(self, "domain")',
 				ord('e'): '_jumpToWin(self, "timeDates")',
 				ord('l'): '_jumpToWin(self, "length")',
 				ord('q'): '_jumpToWin(self, "submit")',
@@ -297,8 +334,8 @@ class timeFrame:
 
 	def _goBack(self):
 		"""
+		Back to original screen
 		"""
-		# back to original screen
 		self.gui.cleanGUI()
 		mainGui().mainLoop()
 
@@ -323,7 +360,6 @@ class timeFrame:
 			pass
 		else:
 			curWin.modified = False
-		#self.gui.addNotification(self.warningY, self.warningX, "Finished!!", 1)
 
 	def calcTimesSlots(self):
 		"""
@@ -334,9 +370,6 @@ class timeFrame:
 		service = connection()
 		finalAvails = []
 	
-		# these were used during local testing, while flying on a place
-		# finalAvails.append({'date': '04/19/2014', 'times': [x for x in range(180, (20*60), 15)], 'length': 60 })
-		# finalAvails.append({'date': '04/13/2014', 'times': [x for x in range(0, (24*60), 15)], 'length': 60 })
 		index = self.gui.getMap('selectedUsers')
 		for date in self.dates:
 			# erase old people if there
@@ -354,14 +387,14 @@ class timeFrame:
 				passwd = ''
 				database = 'Scheduling'
 
-				db = MySQLdb.connect(host=host,user=username,passwd=passwd,db=database)
+				try:
+					db = MySQLdb.connect(host=host,user=username,passwd=passwd,db=database)
+				except:
+					self.gui.addNotification(self.warningY, self.warningX, "Issue connecting to the MySQL server. Check the connection.")
+					return False
 				sql = db.cursor()
-				# User is coming in as jonesjo@onid.oregonstate.edu, the email, not the onid
-				# think about how to represent this
 				query = 'SELECT scheduled_days, scheduled_start_time, scheduled_end_time, scheduled_start_date, scheduled_end_date FROM class AS cls INNER JOIN instructor AS ins ON ins.id = cls.instructor WHERE ins.username = "' + user + '"'
 				sql.execute(query)
-				oniduser = user + "@onid.oregonstate.edu"
-				temp = person(oniduser, int(date['length']), service.service)
 				for row in sql.fetchall():
 					classDays = parseDays(row[0])
 					classStart = fixTime(row[1])
@@ -370,9 +403,6 @@ class timeFrame:
 					end = fixDate(row[4])
 					start = setDateTime(start, classStart)
 					end = setDateTime(end, classEnd)
-					# print start, end
-					#print (parseDays(row[0]))#, startTime, endTime, startDate, endDate)
-					#print startTime, endTime, startDate, endDate
 					temp.addClassTimeBlock(classDays, classStart, classEnd, start, end)
 				people.append(temp)
 				users.append(user)
@@ -380,19 +410,19 @@ class timeFrame:
 			newMeeting = meeting(date['start'], date['stop'], date['length'], people)
 			# run the algorithms
 			if newMeeting.availInTimeSlot():
-			#{ 'date': 'MM/DD/YYYY', 'times': ['MM:HH'] }
 			# append dates and resulting times
 				finalAvails.append({'date': getDate(date['start']), 'times': newMeeting.availableTimes, 'length': date['length'] })
 			else:
 				self.gui.addNotification(self.warningY, self.warningX, "No users were found")
 				return False
 
+		sql.close()
 		# clean the gui, prep to load new window
 		self.gui.cleanGUI()
 		# make the new window, passing in the results from the query
-		resultGui(finalAvails,users).mainLoop()
+		whenToMeetResults(finalAvails,users).mainLoop()
 
-class resultGui:
+class whenToMeetResults:
 	"""
 	Draws the window with the list of results from the queries
 	"""
@@ -400,20 +430,51 @@ class resultGui:
 		self.dates = dates
 		self.users = users
 		self.gui = GUI()
+		self.gui.screen.clear()
 		self.tab = tabstop()
+		self.locations = []
 
-		self.warningY = 1
-		self.warningX = 70
+		self.warningY = 7
+		self.warningX = 39
 
 		self.buildWindows()
 		self.tab.tab = 0
 
 		self.gui.drawGUI(self.tab)
 		self.gui.redrawGUI(self.tab.tab)
+		self.enterMaps = {
+			'home': 'goHome(self)',
+			'exit': 'self.gui.close()\nexit()',
+			'back': 'self._goBack()',
+			'addSlot': '_addDateTime(self)',
+		}
+
+	def _setOrientation(self):
+		"""
+		Sets up the locations for windows based on sizes of the window.
+		"""
+		maxY, maxX = self.gui.screen.getmaxyx()
+		interval = maxY / 10
+		self.locations.append({'win': 'users', 'x': 2, 'y': 8})
+		self.locations.append({'win': 'results', 'x': 3, 'y': ((interval * 3) + 12)})
+		self.locations.append({'win': 'home', 'x': 2, 'y': 3})
+		self.locations.append({'win': 'back', 'x': 13, 'y': 3})
+		self.locations.append({'win': 'exit', 'x': 24, 'y': 3})
 
 	def buildWindows(self):
+		self._setOrientation()
 		maxY, maxX = self.gui.screen.getmaxyx()
-		self.gui.addUIElement('pagedWin', 'results', self.tab, (maxY - 8), 24, 5, 55, self.dates, box=True, highlighted=True)
+		interval = maxY / 10
+
+		self.gui.addLabel(y=1, x=1, input="Multiple Users, Large Time Frame Results")
+		y,x = self.gui.getLocation(self.locations, 'users')
+		self.gui.addLabel(y=y-1, x=x+1, input='Available (U)sers')
+		self.gui.addUIElement('list', 'users', self.tab, self.locations, (interval * 3), 35, self.users, True, True)
+
+		y,x = self.gui.getLocation(self.locations, 'results')
+		self.gui.addLabel(y=y-3, x=x+1, input='     Available (T)imes     ')
+		self.gui.addLabel(y=y-2, x=x+1, input=' (P)rev page | (N)ext page ')
+		self.gui.addUIElement('pagedWin', 'results', self.tab, self.locations, (interval * 3), 24, self.dates, box=True, highlighted=True)
 		
 		# set window selection for each individual array
 		# also, tell the UI to display the label at the top
@@ -422,48 +483,53 @@ class resultGui:
 		for x in self.dates:
 			tempWin.selection.append(0)
 
-		self.gui.addUIElement('list', 'users', self.tab, (maxY - 8), 50, 5, 2, self.users, True, True)
-
-		self.gui.addUIElement('button', 'addSlot', self.tab, y=1, x=1, text='(A)dd Time Slot')
-		self.gui.addUIElement('button', 'back', self.tab, y=1, x=21, text='(B)ack')
-		self.gui.addUIElement('button', 'exit', self.tab, y=1, x=32, text='E(x)it')
+		self.gui.addUIElement('button', 'home', self.tab, self.locations, text='(H)ome')
+		self.gui.addUIElement('button', 'back', self.tab, self.locations, text='(B)ack')
+		self.gui.addUIElement('button', 'exit', self.tab, self.locations, text='E(x)it')
 
 	def mainLoop(self):
+		"""
+		Catches key presses and determines what to do with them
+		"""
+		keyMaps = {
+			ord('\t'): '_moveTab(self, +1)',
+			ord('\n'): 'processEnter(self)',
+			ord('b'): '_jumpToWin(self, "back")',
+			ord('h'): '_jumpToWin(self, "home")',
+			ord('x'): '_jumpToWin(self, "exit")',
+			ord('n'): 'win=self.gui.getWin("results")\nwin.changeFocus(+1)',
+			ord('p'): 'win=self.gui.getWin("results")\nwin.changeFocus(-1)',
+			ord('t'): '_jumpToWin(self, "results")',
+			ord('u'): '_jumpToWin(self, "users")',
+			curses.KEY_DOWN: '_processUpDown(self, +1)',
+			curses.KEY_UP: '_processUpDown(self, -1)',
+			curses.KEY_RIGHT: '_moveTab(self, +1)',
+			curses.KEY_LEFT: '_moveTab(self, -1)'
+		}
 		while True:
 			event = self.gui.screen.getch()
-			if event == ord("x"):
-				self.gui.close()
-				exit()
-			elif event == ord("\t"):
-				_moveTab(self, +1)
-			elif event == event == curses.KEY_RIGHT:
-				#win = self.gui.getMap('results')
-				win = self.gui.getWin('results')
-				win.changeFocus(+1)
-			elif event == event == curses.KEY_LEFT:
-				#win = self.gui.getMap('results')
-				win = self.gui.getWin('results')
-				win.changeFocus(-1)
-			elif event == curses.KEY_DOWN:
-				_processUpDown(self, +1)
-			elif event == curses.KEY_UP:
-				_processUpDown(self, -1)
+			if (event in keyMaps):
+				exec(keyMaps[event])
 
 			self.gui.redrawGUI(self.tab.tab)
+	
+	def _goBack(self):
+		"""
+		Back to previous screen
+		"""
+		self.gui.cleanGUI()
+		whenToMeet().mainLoop()
 
-class availableUsers:
+class whoToExpect:
 	def __init__(self):
 		self.gui = GUI()
-		# deletes gui images already mapped
-		self.gui.windows = []
-		self.gui.mapWindows = []
+		self.gui.screen.clear()
 		self.tab = tabstop()
 		self.selected = []
-		#self.users = ['burrows.danny@gmail.com', 'jonesjo@onid.oregonstate.edu', 'clampitl@onid.oregonstate.edu', 'jjames83@gmail.com']
-		#self.users = [x for x in range(0, 40)]
-		# will hold the dates to check for multiple dates and times
+		self.locations = []
 		# array of tuples, taking the type: { 'date': 'MM/DD/YYYY', 'times': ['MM:HH'] }
 		self.dates = []
+		# will hold the dates to check for multiple dates and times
 		self.warningY = 28
 		self.warningX = 62
 		self.buildWindows()
@@ -486,56 +552,88 @@ class availableUsers:
 			'inputUser': 'getInput(self)'
 		}
 
-	def buildWindows(self):
-		# General start location for input
-		y = 4
-		x = 60
-
-		# Some rudimentary sizing
+	def _setOrientation(self):
+		"""
+		Sets up the locations for windows based on sizes of the window.
+		"""
+		# selected and username:	50 wide	Y height
+		# dates/times: 				6 wide	3 height
+		# length: 					8 wide	3 height
+		# buttons: 					51 wide	3 height
+		# y = 36, x = 112
 		maxY, maxX = self.gui.screen.getmaxyx()
- 		changeX = maxX / 10
-		changeY = maxY / 10
-		self.warningY = (changeY * 3) + (y + 13)
+		interval = maxY / 10
+		# case stack all on top of each other
+		self.locations.append({'win': 'inputUser', 'x': 1, 'y': 8})
+		self.locations.append({'win': 'selectedUsers', 'x': 1, 'y': 13})
+		# make the height of selectedUsers only 3 intervals tall
+		self.locations.append({'win': 'timeDates', 'x': 1, 'y': ((interval * 3) + 15)})
+		self.locations.append({'win': 'startDateM', 'x': 54, 'y': 8})
+		self.locations.append({'win': 'startDateD', 'x': 59, 'y': 8})
+		self.locations.append({'win': 'startDateY', 'x': 63, 'y': 8})
+		self.locations.append({'win': 'length', 'x': 54, 'y': 12})
+		self.locations.append({'win': 'startH', 'x': 54, 'y': 16})
+		self.locations.append({'win': 'startM', 'x': 58, 'y': 16})
+		self.locations.append({'win': 'addSlot', 'x': 1, 'y': 3})
+		self.locations.append({'win': 'submit', 'x': 21, 'y': 3})
+		self.locations.append({'win': 'back', 'x': 33, 'y': 3})
+		self.locations.append({'win': 'exit', 'x': 44, 'y': 3})
+
+	def buildWindows(self):
+		"""
+		Build the UI and prepare for display
+		"""
+		self._setOrientation()
+		maxY, maxX = self.gui.screen.getmaxyx()
+ 		#changeX = maxX / 10
+		interval = maxY / 10
 
 		# User input and remove data
-		self.gui.addLabel(y=5,x=6, input=" Enter a (u)sername ")
-		self.gui.addUIElement('input', 'inputUser', self.tab, y=6, x=4, width=25)
+		y,x = self.gui.getLocation(self.locations, 'inputUser')
+		self.gui.addLabel(y=y-1, x=x+1, input=" Enter a (u)sername ")
+		self.gui.addUIElement('input', 'inputUser', self.tab, self.locations, width=35)
 
-		self.gui.addLabel(y=5, x=32, input=" (D)omain ")
-		self.gui.addUIElement('list', 'domain', self.tab, 3, 25, 6, 30, domains, True, True)
-
-		self.gui.addLabel(y=10, x=6, input=" (C)urrently Addded Users ")
-		self.gui.addUIElement('list', 'selectedUsers', self.tab, int(changeY * 5), 50, 11, 4, self.selected, True, True)
+		y,x = self.gui.getLocation(self.locations, 'selectedUsers')
+		self.gui.addLabel(y=y-1, x=x+1, input=" (C)urrently Addded Users ")
+		self.gui.addUIElement('list', 'selectedUsers', self.tab, self.locations, (interval * 3), 35, self.selected, True, True)
 
 		# Meeting parameters input
-		self.gui.addLabel(y=y+2, x=x+3, input=" Da(t)e: ")
-		self.gui.addUIElement('list', 'startDateM', self.tab, 3, 6, y+1, x+12, months, False, False)
-		self.gui.addUIElement('list', 'startDateD', self.tab, 3, 6, y+1, x+17, days, False, False)
-		self.gui.addUIElement('list', 'startDateY', self.tab, 3, 6, y+1, x+22, years, False, False)
+		y,x = self.gui.getLocation(self.locations, 'startDateM')
+		self.gui.addLabel(y=y-1, x=x+1, input=" Da(t)e: ")
+		self.gui.addUIElement('list', 'startDateM', self.tab, self.locations, 3, 6, months, False, False)
+		self.gui.addUIElement('list', 'startDateD', self.tab, self.locations, 3, 6, days, False, False)
+		self.gui.addUIElement('list', 'startDateY', self.tab, self.locations, 3, 6, years, False, False)
 		self.gui.addLabel(index='startDateM', input='Mon', justify='center', color=4)
 		self.gui.addLabel(index='startDateD', input='Day', justify='center', color=4)
 		self.gui.addLabel(index='startDateY', input='Year', justify='right', color=4)
 
-		self.gui.addLabel(y=y+5, x=x-1, input='(S)tart Time:')
-		self.gui.addUIElement('list', 'startH', self.tab, 3, 6, y+4, x+12, hours, False, False)
-		self.gui.addUIElement('list', 'startM', self.tab, 3, 8, y+4, x+17, mins, False, False)
+		y,x = self.gui.getLocation(self.locations, 'length')
+		self.gui.addLabel(y=y-1, x=x+1, input='(L)ength:')
+		self.gui.addUIElement('list', 'length', self.tab, self.locations, 3, 8, lengths, False, False)
+		self.gui.addLabel(index='length', input='Min', justify='center', color=4)
+
+		y,x = self.gui.getLocation(self.locations, 'startH')
+		self.gui.addLabel(y=y-1, x=x+1, input='(S)tart Time:')
+		self.gui.addUIElement('list', 'startH', self.tab, self.locations, 3, 6, hours, False, False)
+		self.gui.addUIElement('list', 'startM', self.tab, self.locations, 3, 8, mins, False, False)
 		self.gui.addLabel(index='startH', input='Hr', justify='center', color=4)
 		self.gui.addLabel(index='startM', input='Min', justify='center', color=4)
 
-		self.gui.addLabel(y=y+8, x=x+3, input='(L)ength:')
-		self.gui.addUIElement('list', 'length', self.tab, 3, 8, y+7, x+12, lengths, False, False)
-		self.gui.addLabel(index='length', input='Min', justify='center', color=4)
-
-		self.gui.addLabel(y=y+11, x=x+2, input='S(e)lected Dates and Times', color=1)
-		self.gui.addUIElement('timeWin', 'timeDates', self.tab, int(changeY *3), 50, y+12, x, self.dates, True, True)
+		y,x = self.gui.getLocation(self.locations, 'timeDates')
+		self.gui.addLabel(y=y-1, x=x+1, input='S(e)lected Dates and Times', color=1)
+		self.gui.addUIElement('timeWin', 'timeDates', self.tab, self.locations, (interval * 3), 50, self.dates, True, True)
 
 		# Buttons
-		self.gui.addUIElement('button', 'addSlot', self.tab, y=1, x=1, text='(A)dd Time Slot')
-		self.gui.addUIElement('button', 'submit', self.tab, y=1, x=21, text='(Q)uery')
-		self.gui.addUIElement('button', 'back', self.tab, y=1, x=33, text='(B)ack')
-		self.gui.addUIElement('button', 'exit', self.tab, y=1, x=44, text='E(x)it')		
+		self.gui.addUIElement('button', 'addSlot', self.tab, self.locations, text='(A)dd Time Slot')
+		self.gui.addUIElement('button', 'submit', self.tab, self.locations, text='(Q)uery')
+		self.gui.addUIElement('button', 'back', self.tab, self.locations, text='(B)ack')
+		self.gui.addUIElement('button', 'exit', self.tab, self.locations, text='E(x)it')		
 
 	def mainLoop(self):
+		"""
+		Catches key presses and determines what to do with them
+		"""
+		# determines action of each key listed
 		keyMaps = {ord('x'): '_jumpToWin(self, "exit")',
 				ord('\t'): '_moveTab(self, +1)',
 				ord('\n'): 'processEnter(self)',
@@ -562,6 +660,9 @@ class availableUsers:
 			self.gui.redrawGUI(self.tab.tab)
 
 	def submitRequest(self):
+		"""
+		Makes request to both Google Calendar and MySQL database to build the availability structures
+		"""
 		service = connection()
 		dates = []
 		index = self.gui.getMap('selectedUsers')
@@ -570,16 +671,31 @@ class availableUsers:
 			people = []
 			# create people array
 			for user in self.gui.windows[index].items:
-				oniduser = user + "@onid.oregonstate.edu"
-				temp = person(oniduser, int(date['length']), service.service)
-				###########################################
-				# TODO
-				# Add database query here to add blocked times for users.
-				# The syntax is as follows:
-				# THIS QUERY WILL BE SLIGHTLY DIFFERENT
-				# database.query('SELECT classDays, classStart, classEnd FROM classes INNER JOIN class.ID ON class.ID = professor.ID WHERE professor.username ="user" ')
-				# test.addClassTimeBlock(classDays, classStart, classEnd, date['start'], date['stop'])
-				###########################################				
+				temp = person(user + "@onid.oregonstate.edu", int(date['length']), service.service)
+
+				host = 'localhost'
+				username = 'root'
+				passwd = ''
+				database = 'Scheduling'
+
+				try:
+					db = MySQLdb.connect(host=host,user=username,passwd=passwd,db=database)
+				except:
+					self.gui.addNotification(self.warningY, self.warningX, "Issue connecting to the MySQL server. Check the connection.")
+					return False
+				sql = db.cursor()
+				query = 'SELECT scheduled_days, scheduled_start_time, scheduled_end_time, scheduled_start_date, scheduled_end_date FROM class AS cls INNER JOIN instructor AS ins ON ins.id = cls.instructor WHERE ins.username = "' + user + '"'
+				sql.execute(query)
+				for row in sql.fetchall():
+					classDays = parseDays(row[0])
+					classStart = fixTime(row[1])
+					classEnd = fixTime(row[2])
+					start = fixDate(row[3])
+					end = fixDate(row[4])
+					start = setDateTime(start, classStart)
+					end = setDateTime(end, classEnd)
+					temp.addClassTimeBlock(classDays, classStart, classEnd, start, end)
+
 				if temp.errorFlag:
 					self.gui.addNotification(self.warningY, self.warningX, temp.errorMsg)
 					return False
@@ -592,33 +708,61 @@ class availableUsers:
 			#
 			# users are held in newMeeting.availUsers
 			# 
-				dates.append({'date': getDate(date['start']), 'users': newMeeting.availUsers, 'length': date['length'] })
+				dates.append({'date': date['start'], 'users': newMeeting.availUsers, 'length': date['length'] })
 			else:
 				self.gui.addNotification(self.warningY, self.warningX, "No users were found")
 				return False
 		#self.gui.cleanGUI()
 		#  call new results gui
-		#  userResults(newMeeting.availUsers, dates).mainLoop()
+		whoToExpectResults(dates)
 		return True
+	
+	def _goBack(self):
+		"""
+		Back to original screen
+		"""
+		self.gui.cleanGUI()
+		mainGui().mainLoop()
 
-class userResults:
-	def __init__(self, dates, users):
+class whoToExpectResults:
+	"""
+	Will display results for 2nd use case
+	"""
+	def __init__(self, dates):
 		self.dates = dates
-		self.users = users
 		self.gui = GUI()
+		self.gui.screen.clear()
 		self.tab = tabstop()
 		self.warningY = 1
 		self.warningX = 70
-
+		self.locations = []
 		self.buildWindows()
 		self.tab.tab = 0
 
 		self.gui.drawGUI(self.tab)
 		self.gui.redrawGUI(self.tab.tab)
+		self.enterMaps = {
+			'exit': 'self.gui.close()\nexit()',
+			'back': 'self._goBack()',
+			'home': 'goHome(self)'
+		}
+		self.mainLoop()
+
+	def _setOrientation(self):
+		"""
+		Sets up the locations for windows based on sizes of the window.
+		"""
+		maxY, maxX = self.gui.screen.getmaxyx()
+		interval = maxY / 10
+		self.locations.append({'win': 'results', 'x': 3, 'y': 10})
+		self.locations.append({'win': 'home', 'x': 2, 'y': 3})
+		self.locations.append({'win': 'back', 'x': 13, 'y': 3})
+		self.locations.append({'win': 'exit', 'x': 24, 'y': 3})
 
 	def buildWindows(self):
+		self._setOrientation()
 		maxY, maxX = self.gui.screen.getmaxyx()
-
+		interval = maxY / 10
 		# the results are going to formulated a bit differently
 		# we need a list of users for each date and time
 		# display the start time of the meeting, the date, the length of the meeting and a list of users that are going to attend
@@ -629,17 +773,49 @@ class userResults:
 		# user3
 		#
 		# Left/right arrows to nav
-		self.gui.addUIElement('pagedWin', 'results', self.tab, (maxY - 8), 24, 5, 55, self.dates, True, True)
+		self.gui.addLabel(y=1, x=1, input="Who can I expect at the meeting(s)?")
+		
+		y,x = self.gui.getLocation(self.locations, 'results')
+		self.gui.addLabel(y=y-3, x=x+10, input='    Available (U)sers    ')
+		self.gui.addLabel(y=y-2, x=x+10, input='(P)rev page | (N)ext Page')
+		self.gui.addUIElement('pagedWinUsers', 'results', self.tab, self.locations, (interval * 8), 50, self.dates, True, True)
 		tempWin = self.gui.getWin('results')
 		tempWin.label = True
 		for x in self.dates:
 			tempWin.selection.append(0)
-		#self.gui.addUIElement('list', 'users', self.tab, (maxY - 8), 50, 5, 2, self.users, True, True)
 
-		self.gui.addUIElement('button', 'addSlot', self.tab, y=1, x=1, text='(A)dd Time Slot')
-		self.gui.addUIElement('button', 'back', self.tab, y=1, x=21, text='(B)ack')
-		self.gui.addUIElement('button', 'exit', self.tab, y=1, x=32, text='E(x)it')
+		self.gui.addUIElement('button', 'home', self.tab, self.locations, text='(H)ome')
+		self.gui.addUIElement('button', 'back', self.tab, self.locations, text='(B)ack')
+		self.gui.addUIElement('button', 'exit', self.tab, self.locations, text='E(x)it')
 
+	def mainLoop(self):
+		keyMaps = {
+			ord('\t'): '_moveTab(self, +1)',
+			ord('\n'): 'processEnter(self)',
+			ord('b'): '_jumpToWin(self, "back")',
+			ord('h'): '_jumpToWin(self, "home")',
+			ord('x'): '_jumpToWin(self, "exit")',
+			ord('n'): 'win=self.gui.getWin("results")\nwin.changeFocus(+1)',
+			ord('p'): 'win=self.gui.getWin("results")\nwin.changeFocus(-1)',
+			ord('u'): '_jumpToWin(self, "results")',
+			curses.KEY_DOWN: '_processUpDown(self, +1)',
+			curses.KEY_UP: '_processUpDown(self, -1)',
+			curses.KEY_RIGHT: '_moveTab(self, +1)',
+			curses.KEY_LEFT: '_moveTab(self, -1)'
+		}
+		while True:
+			event = self.gui.screen.getch()
+			if (event in keyMaps):
+				exec(keyMaps[event])
+
+			self.gui.redrawGUI(self.tab.tab)
+
+	def _goBack(self):
+		"""
+		Back to original screen
+		"""
+		self.gui.cleanGUI()
+		whoToExpect().mainLoop()		
 
 class mainGui:
 	"""
@@ -648,6 +824,8 @@ class mainGui:
 	def __init__(self):
 		self.gui = GUI()
 		self.tab = tabstop()
+		self.locations = []
+		self.gui.screen.clear()
 
 		self.warningY = 54
 		self.warningX = 6
@@ -657,11 +835,21 @@ class mainGui:
 
 		self.gui.drawGUI(self.tab)
 		self.gui.redrawGUI(self.tab.tab)
-	
+
+	def _setLocations(self):
+		self.locations.append({'win': 'spec', 'x': 8, 'y': 6})
+		self.locations.append({'win': 'users', 'x': 8, 'y': 11})
+		self.locations.append({'win': 'meeting', 'x': 8, 'y': 16})
+
 	def buildWindows(self):
-		self.gui.addUIElement('button', 'spec', self.tab, y=6, x=8, text='Search Time Frame')
-		self.gui.addUIElement('button', 'users', self.tab, y=11, x=8, text='Search by Users')
-		self.gui.addUIElement('button', 'meeting', self.tab, y=16, x=8, text='Schedule Meeting')
+		# maxY, maxX = self.gui.screen.getmaxyx()
+		# self.gui.close()
+		# print maxY, maxX
+		# exit()
+		self._setLocations()
+		self.gui.addUIElement('button', 'spec', self.tab, self.locations, text='Search Time Frame')
+		self.gui.addUIElement('button', 'users', self.tab, self.locations, text='Search by Users')
+		self.gui.addUIElement('button', 'meeting', self.tab, self.locations, text='Schedule Meeting')
 
 	def mainLoop(self):	
 		keyMaps = {ord('x'): 'self.gui.close()\nexit()',
@@ -676,9 +864,9 @@ class mainGui:
 			if event == ord('\n'):
 				newWin = self.processEnter()
 				if newWin == 2:
-					timeFrame().mainLoop()
+					whenToMeet().mainLoop()
 				elif newWin == 3:
-					prog = availableUsers()
+					prog = whoToExpect()
 					prog.mainLoop()
 			elif (event in keyMaps):
 				exec(keyMaps[event])
@@ -716,17 +904,17 @@ class mainGui:
 		pass
 
 if __name__ == "__main__":
-	# Test structures
+	# Global variables for selections in each window
 	months = [str(x).zfill(2) for x in range(1, 13)]
 	days = [str(x).zfill(2) for x in range(1, 32)]
 	years = [str(x) for x in range(2014,2021)]
 	hours = [str(x).zfill(2) for x in range(0,24)]
 	mins = [str(x).zfill(2) for x in range(0,60,15)]
 	lengths = [str(x) for x in range(15,375,15)]
-	selected = []
-	# 'ONID Username', 
-	domains =['@gmail.com', '@onid.oregonstate.edu', '@eecs.oregonstate.edu']
-	users = ['burrows.danny@gmail.com', 'jonesjo@onid.oregonstate.edu', 'clampitl@onid.oregonstate.edu', 'jjames83@gmail.com']
+	
+	# selected = []
+	# domains =['@gmail.com', '@onid.oregonstate.edu', '@eecs.oregonstate.edu']
+	# users = ['burrows.danny@gmail.com', 'jonesjo@onid.oregonstate.edu', 'clampitl@onid.oregonstate.edu', 'jjames83@gmail.com']
 	#users = [ x for x in range(0,50)]
 	# test = GUI()
 	# x = button(test.screen, 3, 3, "TESTING",0)

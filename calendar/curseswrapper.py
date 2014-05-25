@@ -140,6 +140,52 @@ def getPagedTimeString(self, index):
 	"""
 	return printTime(self.items[self.focus]['times'][index]) + ' - ' + printTime(self.items[self.focus]['times'][index] + self.items[self.focus]['length'])
 
+def displayUserString(self, focus = False, highlight = False):
+	"""
+	The specific display function for a paged window.
+
+	It's different as it indexes based off both focus and selection
+	"""
+	# stops from updating unnecessarily
+	# dates.append({'date': getDate(date['start']), 'users': newMeeting.availUsers, 'length': date['length'] })
+	if not self.modified:
+		return
+	self.pad.clear()
+	if self.label:
+		self.pad.addstr(1,2, self.items[self.focus]['date'] + ' ' + str(self.items[self.focus]['length']) + ' mins', curses.color_pair(1))
+	if highlight:
+		self.pad.bkgd(curses.color_pair(3))
+	else:
+		self.pad.bkgd(curses.color_pair(4))
+	height, width = self.pad.getmaxyx() # get the size of the pad
+	height = height - 4 # remove padding
+	page = 0 # for pagination
+	if self.selection[self.focus] >= height:
+		page = self.selection[self.focus] / height # determines which page the current selection should be on
+	for x in range(0,height): # displays as many lines as can be clean fit inside the pad
+		index = x + (page * height) # holds the index for items to be displayed, as we are not just listing the first X amount
+		if (index) < len(self.items[self.focus]['users']): # prevent out of range error
+			if focus:# and self.scrollable: # the object is focused, so there will be a color change, and it scrollable so we can display the cursor
+				if (index) == self.selection[self.focus]: # controls the highlighting of the current selection
+					self.pad.addstr(x+3,2, self.items[self.focus]['users'][index], curses.color_pair(2)) # differentiate
+				else:
+					self.pad.addstr(x+3,2, self.items[self.focus]['users'][index])
+			else:
+				self.pad.addstr(x+3,2, self.items[self.focus]['users'][index])
+	if self.box: # draws box is we are supposed to
+		self.pad.box()
+	self.pad.refresh() # redraw the pad
+	self.modified = False
+	#dates.append({'date': getDate(date['start']), 'users': newMeeting.availUsers, 'length': date['length'] })
+
+def getPagedUsersString(self, index):
+	"""
+	Helper function for the pagedWindow object
+
+	Returns a string with formatted start and stop times
+	"""
+	return printTime(self.items[self.focus]['users'][index])
+
 class GUI:
 	"""
 	The GUI class is the major component of the curses interface. This class sets up the screen that pads are added to.
@@ -163,82 +209,6 @@ class GUI:
 		curses.init_pair(5, curses.COLOR_WHITE, curses.COLOR_RED)
 
 		self.screen.bkgd(curses.color_pair(4))
-
-	def drawGUI(self, tab):
-		"""
-		Draws a box around the screen and refreshes the screen.
-		"""
-		tab.maxTab = len(self.windows) - 1
-		#self.screen.box()
-		self.screen.refresh()
-		return True
-
-	def redrawGUI(self, tab):
-		"""
-		Redraws pads, based on which pad is currently active
-
-		Parameters
-		gui - GUI() object that contains list of windows
-		tab - the current tabstop
-		"""
-		activeWin = self.getTab(tab)
-		for x in self.windows:
-			if x == activeWin:
-				# adds the highlighting
-				if x.highlighted:
-					x.display(x, True, True)
-				else:
-					x.display(x, True)
-			else:
-				x.display(x)
-
-	def cleanGUI(self):
-		"""
-		Erases the screen and resets the windows and mapWindows arrays.
-		"""
-		self.screen.erase()
-		#self.screen.box()
-		self.windows = []
-		self.mapWindows = []
-		return True
-
-	def close(self):
-		"""
-		Closes the GUI window and resets terminal control.
-		"""
-		self.cleanGUI()
-		self.screen.erase()
-		curses.nocbreak()
-		self.screen.keypad(0)
-		curses.echo()
-		curses.endwin()
-		return True
-
-	def getMap(self, input):
-		"""
-		Returns the value of the tab index for the specific name of a window.
-		Works by taking the string and finding that key, then returns the value at that key.
-		"""
-		return [x[input] for x in self.mapWindows if input in x][0]
-
-	def getKey(self, tab):
-		return [key for key in self.mapWindows[tab].keys()][0]
-
-	def getTab(self, tab):
-		"""
-		Based on the tab location, returns the pad assigned to that tabstop.
-		"""
-		for x in self.windows:
-			if x.tab == tab:
-				return x
-		return None
-
-	def getWin(self, input):
-		"""
-		Returns the window object for manipulation
-		"""
-		index = self.getMap(input)
-		return self.getTab(index)
 
 	def addLabel(self, input, y = None, x = None, index = None, justify='left', color=1):
 		"""
@@ -291,6 +261,68 @@ class GUI:
 		self.screen.addstr(y,x, input, curses.color_pair(color))
 		self.screen.refresh()
 
+	def addUIElement(self, elem, mapping, tab, locations, height=0, width=0, items=None, box=True, highlighted=True, text=None):
+		"""
+		Adds a specific case of a 'window', with the required parameters
+
+		Parameters:
+		elem - the type of window pad to add
+		mapping - name of the window to easily control elements
+		tab - the tabstop number, used in navigation
+		height - number of rows for the pad
+		width - number of columns for the pad
+		y - the starting row location
+		x - the starting colun location
+		items - a list of the items that will be displayed in the window; may be a specially formatted dictionary
+		box - boolean on whether to draw a box around the window
+		highlighted - boolean, determines if the window should be highlighted when focused
+		text - the text to display in the window
+		"""
+		y,x = self.getLocation(locations, mapping)
+
+		if elem == 'list':
+			self.windows.append(listWindow(height, width, y, x, items, tab.maxTab, box, highlighted))
+			self.mapWindows.append({mapping:tab.maxTab})
+		elif elem == 'timeWin':
+			newWin = listWindow(height, width, y, x, items, tab.maxTab, box, highlighted)
+			newWin.display = displayDateTime
+			self.windows.append(newWin)
+			self.mapWindows.append({mapping:tab.maxTab})
+		elif elem == 'pagedWin':
+			self.windows.append(pagedWindow(height, width, y, x, items, tab.maxTab, box, highlighted))
+			self.mapWindows.append({mapping:tab.maxTab})
+		elif elem == 'pagedWinUsers':
+			newWin = pagedWindow(height, width, y, x, items, tab.maxTab, box, highlighted)
+			newWin.display = displayUserString
+			self.windows.append(newWin)
+			self.mapWindows.append({mapping:tab.maxTab})
+		elif elem == 'button':
+			self.windows.append(button(y, x, text, tab.maxTab, box, highlighted))
+			self.mapWindows.append({mapping:tab.maxTab})
+		elif elem == 'input':
+			self.windows.append(inputBox(y, x, width, tab.maxTab, box, highlighted))
+			self.mapWindows.append({mapping:tab.maxTab})
+		tab.incTab()
+
+	def drawGUI(self, tab):
+		"""
+		Draws a box around the screen and refreshes the screen.
+		"""
+		tab.maxTab = len(self.windows) - 1
+		#self.screen.box()
+		self.screen.refresh()
+		return True
+
+	def cleanGUI(self):
+		"""
+		Erases the screen and resets the windows and mapWindows arrays.
+		"""
+		self.screen.erase()
+		#self.screen.box()
+		self.windows = []
+		self.mapWindows = []
+		return True
+
 	def clearWarning(self, y, x):
 		"""
 		Removes the warning message
@@ -298,6 +330,49 @@ class GUI:
 		self.screen.move(y,x)
 		self.screen.clrtoeol() # clears to the end of the line, this will remove items in between cursor and end of line, be careful
 		#self.screen.box()
+
+	def close(self):
+		"""
+		Closes the GUI window and resets terminal control.
+		"""
+		self.cleanGUI()
+		self.screen.erase()
+		curses.nocbreak()
+		self.screen.keypad(0)
+		curses.echo()
+		curses.endwin()
+		return True
+
+	def getDate(self, input):
+		"""
+		Gets the values for the date attributes off the pads
+
+		Parameters
+		input - a string that is used in finding the dictionary key, so we can obtain the value
+		"""
+		monthI = self.getMap(input+'M')	# get the index that holds the month
+		dayI = self.getMap(input+'D')	# get the index that holds the day
+		yearI = self.getMap(input+'Y')	# get the index that holds the year
+		# returns in the expected format
+		return (self.windows[monthI].getSelectedValue() + "/" + self.windows[dayI].getSelectedValue() + "/" + self.windows[yearI].getSelectedValue())
+
+	def getLocation(self, locations, window):
+		"""
+		Returns the x or y coordinate of the window referred to by window
+		"""
+		for x in locations:
+			if x['win'] == window:
+				return x['y'], x['x']
+
+	def getMap(self, input):
+		"""
+		Returns the value of the tab index for the specific name of a window.
+		Works by taking the string and finding that key, then returns the value at that key.
+		"""
+		return [x[input] for x in self.mapWindows if input in x][0]
+
+	def getKey(self, tab):
+		return [key for key in self.mapWindows[tab].keys()][0]
 
 	def getStates(self):
 		"""
@@ -307,7 +382,7 @@ class GUI:
 		# get the values for everything on the board
 		# compose indices and prep for ouput
 		#userNames = []							# will hold the list of users that has been selected
-		index = self.getMap('selectedUsers')		# the index (tabstop) for the people the user has selected to query
+		#index = self.getMap('selectedUsers')		# the index (tabstop) for the people the user has selected to query
 		#for x in self.windows[index].items:		
 		#	userNames.append(x)
 		startDate = self.getDate("startDate")	# gets the starting date, in a standard format MM/DD/YYYY
@@ -332,26 +407,14 @@ class GUI:
 		end = endDate + " " + endTime
 		return start, end, int(length)#, userNames
 
-	def winExists(self,input):
+	def getTab(self, tab):
 		"""
-		Returns true if the window is in the mapWindows array
+		Based on the tab location, returns the pad assigned to that tabstop.
 		"""
-		if input in self.mapWindows[0]:
-			return True
-		return False
-
-	def getDate(self, input):
-		"""
-		Gets the values for the date attributes off the pads
-
-		Parameters
-		input - a string that is used in finding the dictionary key, so we can obtain the value
-		"""
-		monthI = self.getMap(input+'M')	# get the index that holds the month
-		dayI = self.getMap(input+'D')	# get the index that holds the day
-		yearI = self.getMap(input+'Y')	# get the index that holds the year
-		# returns in the expected format
-		return (self.windows[monthI].getSelectedValue() + "/" + self.windows[dayI].getSelectedValue() + "/" + self.windows[yearI].getSelectedValue())
+		for x in self.windows:
+			if x.tab == tab:
+				return x
+		return None
 
 	def _getTime(self, input):
 		"""
@@ -365,41 +428,40 @@ class GUI:
 		# return as a string in the expected format
 		return (self.windows[hourI].getSelectedValue() + ":" + self.windows[minI].getSelectedValue())
 
-	def addUIElement(self, elem, mapping, tab, height=0, width=0, y=0, x=0, items=None, box=True, highlighted=True, text=None):
+	def getWin(self, input):
 		"""
-		Adds a specific case of a 'window', with the required parameters
+		Returns the window object for manipulation
+		"""
+		index = self.getMap(input)
+		return self.getTab(index)
 
-		Parameters:
-		elem - the type of window pad to add
-		mapping - name of the window to easily control elements
-		tab - the tabstop number, used in navigation
-		height - number of rows for the pad
-		width - number of columns for the pad
-		y - the starting row location
-		x - the starting colun location
-		items - a list of the items that will be displayed in the window; may be a specially formatted dictionary
-		box - boolean on whether to draw a box around the window
-		highlighted - boolean, determines if the window should be highlighted when focused
-		text - the text to display in the window
+	def redrawGUI(self, tab):
 		"""
-		if elem == 'list':
-			self.windows.append(listWindow(height, width, y, x, items, tab.maxTab, box, highlighted))
-			self.mapWindows.append({mapping:tab.maxTab})
-		elif elem == 'timeWin':
-			newWin = listWindow(height, width, y, x, items, tab.maxTab, box, highlighted)
-			newWin.display = displayDateTime
-			self.windows.append(newWin)
-			self.mapWindows.append({mapping:tab.maxTab})
-		elif elem == 'pagedWin':
-			self.windows.append(pagedWindow(height, width, y, x, items, tab.maxTab, box, highlighted))
-			self.mapWindows.append({mapping:tab.maxTab})
-		elif elem == 'button':
-			self.windows.append(button(y, x, text, tab.maxTab, box, highlighted))
-			self.mapWindows.append({mapping:tab.maxTab})
-		elif elem == 'input':
-			self.windows.append(inputBox(y, x, width, tab.maxTab, box, highlighted))
-			self.mapWindows.append({mapping:tab.maxTab})
-		tab.incTab()
+		Redraws pads, based on which pad is currently active
+
+		Parameters
+		gui - GUI() object that contains list of windows
+		tab - the current tabstop
+		"""
+		activeWin = self.getTab(tab)
+		for x in self.windows:
+			if x.modified:
+				if x == activeWin:
+					# adds the highlighting
+					if x.highlighted:
+						x.display(x, True, True)
+					else:
+						x.display(x, True)
+				else:
+					x.display(x)
+
+	def winExists(self,input):
+		"""
+		Returns true if the window is in the mapWindows array
+		"""
+		if input in self.mapWindows[0]:
+			return True
+		return False
 
 class GUIPad:
 	"""
@@ -547,10 +609,12 @@ class pagedWindow(listWindow):
 		self.modified = True
 		self.selection[self.focus] = self.selection[self.focus] + direction
 		# correct for going out of bounds
+	
 		if self.selection[self.focus] == len(self.items[self.focus]['times']):
 			self.selection[self.focus] = 0
 		if self.selection[self.focus] == -1:
 			self.selection[self.focus] = len(self.items[self.focus]['times']) - 1
+		
 		return True
 
 	def changeFocus(self, direction):

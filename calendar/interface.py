@@ -72,7 +72,7 @@ class meeting:
 					availableUsers.append(j.getUserName())
 		# set removes duplicates, easy way to remove duplicates
 		if availableUsers:
-			self.availUsers = set(availableUsers)
+			self.availUsers = list(set(availableUsers))
 			return True
 		return False
 
