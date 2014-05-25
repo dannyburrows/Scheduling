@@ -5,6 +5,26 @@ from timemanip import *
 # Sets one screen for the entire GUI
 GUIScreen = curses.initscr()
 
+def displayCheckbox(self, focus = False, highlight = False):
+	if not self.modified:
+		return
+	self.pad.clear()
+	if highlight:
+		self.pad.bkgd(curses.color_pair(3))
+	else:
+		self.pad.bkgd(curses.color_pair(4))
+	try:
+		if self.checked:
+			self.pad.addstr(1, 2, 'X ' + self.text)
+		else:
+			self.pad.addstr(1, 4, self.text)
+	except:
+		pass
+	if self.box:
+		self.pad.box()
+	self.pad.refresh()
+	self.modified = False
+
 def displayStatic(self, focus = False, highlight = False):
 	"""
 	Basic display for a static object (inputBox and button)
@@ -301,6 +321,9 @@ class GUI:
 			self.mapWindows.append({mapping:tab.maxTab})
 		elif elem == 'input':
 			self.windows.append(inputBox(y, x, width, tab.maxTab, box, highlighted))
+			self.mapWindows.append({mapping:tab.maxTab})
+		elif elem == 'checkbox':
+			self.windows.append(checkbox(y, x, text, tab.maxTab, box, highlighted))
 			self.mapWindows.append({mapping:tab.maxTab})
 		tab.incTab()
 
@@ -628,6 +651,17 @@ class pagedWindow(listWindow):
 		if self.focus == -	1:
 			self.focus = len(self.items) - 1
 		return True
+
+class checkbox(GUIPad):
+	def __init__(self, y, x, text, tab, box=True, highlighted=True):
+		width = len(text) + 5
+		height = 3
+		GUIPad.__init__(self, height, width, y, x, tab, highlighted)
+		self.box = box
+		self.text = text
+		self.scrollable = False
+		self.display = displayCheckbox
+		self.checked = False
 
 class tabstop:
 	"""

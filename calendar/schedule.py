@@ -210,7 +210,7 @@ class whenToMeet:
 		self.locations.append({'win': 'inputUser', 'x': 1, 'y': 8})
 		self.locations.append({'win': 'selectedUsers', 'x': 1, 'y': 13})
 		# make the height of selectedUsers only 3 intervals tall
-		self.locations.append({'win': 'timeDates', 'x': 1, 'y': ((interval * 3) + 15)})
+		self.locations.append({'win': 'timeDates', 'x': 1, 'y': ((interval * 2) + 15)})
 		self.locations.append({'win': 'startDateM', 'x': 54, 'y': 8})
 		self.locations.append({'win': 'startDateD', 'x': 59, 'y': 8})
 		self.locations.append({'win': 'startDateY', 'x': 63, 'y': 8})
@@ -259,12 +259,11 @@ class whenToMeet:
 
 		y,x = self.gui.getLocation(self.locations, 'selectedUsers')
 		self.gui.addLabel(y=y-1, x=x, input=" (C)urrently Addded Users ")
-		self.gui.addUIElement('list', 'selectedUsers', self.tab, self.locations, int(interval * 3), 35, self.selected, True, True)
+		self.gui.addUIElement('list', 'selectedUsers', self.tab, self.locations, int(interval * 2), 35, self.selected, True, True)
 
 		y,x = self.gui.getLocation(self.locations, 'timeDates')
 		self.gui.addLabel(y=y-1, x=x, input=' S(e)lected Dates and Times ', color=1)
-		self.gui.addUIElement('timeWin', 'timeDates', self.tab, self.locations, int(interval * 3), 50, self.dates, True, True)
-
+		self.gui.addUIElement('timeWin', 'timeDates', self.tab, self.locations, int(interval * 2), 50, self.dates, True, True)
 
 		# Variables
 		y,x = self.gui.getLocation(self.locations, 'startDateM')
@@ -567,7 +566,7 @@ class whoToExpect:
 		self.locations.append({'win': 'inputUser', 'x': 1, 'y': 8})
 		self.locations.append({'win': 'selectedUsers', 'x': 1, 'y': 13})
 		# make the height of selectedUsers only 3 intervals tall
-		self.locations.append({'win': 'timeDates', 'x': 1, 'y': ((interval * 3) + 15)})
+		self.locations.append({'win': 'timeDates', 'x': 1, 'y': ((interval * 2) + 15)})
 		self.locations.append({'win': 'startDateM', 'x': 54, 'y': 8})
 		self.locations.append({'win': 'startDateD', 'x': 59, 'y': 8})
 		self.locations.append({'win': 'startDateY', 'x': 63, 'y': 8})
@@ -595,7 +594,7 @@ class whoToExpect:
 
 		y,x = self.gui.getLocation(self.locations, 'selectedUsers')
 		self.gui.addLabel(y=y-1, x=x+1, input=" (C)urrently Addded Users ")
-		self.gui.addUIElement('list', 'selectedUsers', self.tab, self.locations, (interval * 3), 35, self.selected, True, True)
+		self.gui.addUIElement('list', 'selectedUsers', self.tab, self.locations, (interval * 2), 35, self.selected, True, True)
 
 		# Meeting parameters input
 		y,x = self.gui.getLocation(self.locations, 'startDateM')
@@ -621,7 +620,7 @@ class whoToExpect:
 
 		y,x = self.gui.getLocation(self.locations, 'timeDates')
 		self.gui.addLabel(y=y-1, x=x+1, input='S(e)lected Dates and Times', color=1)
-		self.gui.addUIElement('timeWin', 'timeDates', self.tab, self.locations, (interval * 3), 50, self.dates, True, True)
+		self.gui.addUIElement('timeWin', 'timeDates', self.tab, self.locations, (interval * 2), 50, self.dates, True, True)
 
 		# Buttons
 		self.gui.addUIElement('button', 'addSlot', self.tab, self.locations, text='(A)dd Time Slot')
@@ -678,23 +677,23 @@ class whoToExpect:
 				passwd = ''
 				database = 'Scheduling'
 
-				try:
-					db = MySQLdb.connect(host=host,user=username,passwd=passwd,db=database)
-				except:
-					self.gui.addNotification(self.warningY, self.warningX, "Issue connecting to the MySQL server. Check the connection.")
-					return False
-				sql = db.cursor()
-				query = 'SELECT scheduled_days, scheduled_start_time, scheduled_end_time, scheduled_start_date, scheduled_end_date FROM class AS cls INNER JOIN instructor AS ins ON ins.id = cls.instructor WHERE ins.username = "' + user + '"'
-				sql.execute(query)
-				for row in sql.fetchall():
-					classDays = parseDays(row[0])
-					classStart = fixTime(row[1])
-					classEnd = fixTime(row[2])
-					start = fixDate(row[3])
-					end = fixDate(row[4])
-					start = setDateTime(start, classStart)
-					end = setDateTime(end, classEnd)
-					temp.addClassTimeBlock(classDays, classStart, classEnd, start, end)
+				# try:
+				# 	db = MySQLdb.connect(host=host,user=username,passwd=passwd,db=database)
+				# except:
+				# 	self.gui.addNotification(self.warningY, self.warningX, "Issue connecting to the MySQL server. Check the connection.")
+				# 	return False
+				# sql = db.cursor()
+				# query = 'SELECT scheduled_days, scheduled_start_time, scheduled_end_time, scheduled_start_date, scheduled_end_date FROM class AS cls INNER JOIN instructor AS ins ON ins.id = cls.instructor WHERE ins.username = "' + user + '"'
+				# sql.execute(query)
+				# for row in sql.fetchall():
+				# 	classDays = parseDays(row[0])
+				# 	classStart = fixTime(row[1])
+				# 	classEnd = fixTime(row[2])
+				# 	start = fixDate(row[3])
+				# 	end = fixDate(row[4])
+				# 	start = setDateTime(start, classStart)
+				# 	end = setDateTime(end, classEnd)
+				# 	temp.addClassTimeBlock(classDays, classStart, classEnd, start, end)
 
 				if temp.errorFlag:
 					self.gui.addNotification(self.warningY, self.warningX, temp.errorMsg)
@@ -778,7 +777,7 @@ class whoToExpectResults:
 		y,x = self.gui.getLocation(self.locations, 'results')
 		self.gui.addLabel(y=y-3, x=x+10, input='    Available (U)sers    ')
 		self.gui.addLabel(y=y-2, x=x+10, input='(P)rev page | (N)ext Page')
-		self.gui.addUIElement('pagedWinUsers', 'results', self.tab, self.locations, (interval * 8), 50, self.dates, True, True)
+		self.gui.addUIElement('pagedWinUsers', 'results', self.tab, self.locations, (interval * 6), 50, self.dates, True, True)
 		tempWin = self.gui.getWin('results')
 		tempWin.label = True
 		for x in self.dates:
@@ -816,6 +815,172 @@ class whoToExpectResults:
 		"""
 		self.gui.cleanGUI()
 		whoToExpect().mainLoop()		
+
+class userSchedule:
+	def __init__(self):
+		self.gui = GUI()
+		self.gui.screen.clear()
+		self.tab = tabstop()
+		# array of tuples, taking the type: { 'date': 'MM/DD/YYYY', 'times': ['MM:HH'] }
+		self.dates = []
+		self.locations = []
+		self.user = ""
+		# will hold the dates to check for multiple dates and times
+		self.warningY = 28
+		self.warningX = 62
+		self.buildWindows()
+		self.setSelections()
+		self.tab.tab = 0
+		self.gui.drawGUI(self.tab)
+		self.gui.redrawGUI(self.tab.tab)
+		self.enterMaps = {'submit': 'self.submitRequest()',
+			'exit': 'self.gui.close()\nexit()',
+			'back': 'self._goBack()',
+			'addSlot': '_addDateTime(self)',
+			'selectedUsers': '_removeItem(self, self.selected, "selectedUsers", "No users to remove")',
+			'timeDates': '_removeItem(self, self.dates, "timeDates", "No values to remove")',
+			'inputUser': 'getInput(self)',
+			'startH': '_addDateTime(self)',
+			'startM': '_addDateTime(self)',
+			'startDateM': '_addDateTime(self)',
+			'startDateD': '_addDateTime(self)',
+			'startDateY': '_addDateTime(self)',
+			'length': '_addDateTime(self)',
+			'inputUser': 'getInput(self)'
+		}
+
+	def _setOrientation(self):
+		"""
+		Sets up the locations for windows based on sizes of the window.
+		"""
+		# selected and username:	50 wide	Y height
+		# dates/times: 				6 wide	3 height
+		# length: 					8 wide	3 height
+		# buttons: 					51 wide	3 height
+		# y = 36, x = 112
+		maxY, maxX = self.gui.screen.getmaxyx()
+		interval = maxY / 10
+		# case stack all on top of each other
+		self.locations.append({'win': 'inputUser', 'x': 1, 'y': 8})
+		self.locations.append({'win': 'user', 'x': 1, 'y': 13})
+		# make the height of selectedUsers only 3 intervals tall
+		self.locations.append({'win': 'startDateM', 'x': 54, 'y': 8})
+		self.locations.append({'win': 'startDateD', 'x': 59, 'y': 8})
+		self.locations.append({'win': 'startDateY', 'x': 63, 'y': 8})
+		self.locations.append({'win': 'length', 'x': 54, 'y': 12})
+		self.locations.append({'win': 'startH', 'x': 54, 'y': 16})
+		self.locations.append({'win': 'startM', 'x': 58, 'y': 16})
+		self.locations.append({'win': 'endH', 'x': 54, 'y': 20})
+		self.locations.append({'win': 'endM', 'x': 58, 'y': 20})
+		self.locations.append({'win': 'addSlot', 'x': 1, 'y': 3})
+		self.locations.append({'win': 'submit', 'x': 21, 'y': 3})
+		self.locations.append({'win': 'back', 'x': 33, 'y': 3})
+		self.locations.append({'win': 'exit', 'x': 44, 'y': 3})
+		self.locations.append({'win': 'saneDefault', 'x': 1, 'y': 18})
+
+	def setSelections(self):
+		"""
+		Sets default selects to values that make sense
+		"""
+		now = datetime.now()
+		day = int(now.strftime("%d"))
+		month = int(now.strftime("%m"))
+		win = self.gui.getWin('startDateM')
+		win.selection = (month - 1)
+		win = self.gui.getWin('startDateD')
+		win.selection = (day - 1)
+		win = self.gui.getWin('startH')
+		win.selection = 8
+		win = self.gui.getWin('endH')
+		win.selection = 18
+		win = self.gui.getWin('length')
+		win.selection = 3
+
+	def buildWindows(self):
+		"""
+		Creates the windows to be displayed by the GUI
+		"""
+		self._setOrientation()
+
+		maxY, maxX = self.gui.screen.getmaxyx()
+		interval = maxY / 10
+		self.warningY = (interval * 3) + 15
+		self.gui.addLabel(y=1,x=1,input="When is the user available?")
+		# Listing windows
+		y,x = self.gui.getLocation(self.locations, 'inputUser')
+		self.gui.addLabel(y=y-1,x=x, input=" Enter an ONID (u)sername ")
+		self.gui.addUIElement('input', 'inputUser', self.tab, self.locations, width=35)
+
+		y,x = self.gui.getLocation(self.locations, 'user')
+		self.gui.addLabel(y=y-1, x=x, input=" (C)urrent User ")
+		self.gui.addUIElement('button', 'user', self.tab, self.locations, text=self.user, box=False, highlighted=True)
+
+		self.gui.addUIElement('checkbox', 'saneDefault', self.tab, self.locations, text=" Check for next week ")
+
+		# Variables
+		y,x = self.gui.getLocation(self.locations, 'startDateM')
+		self.gui.addLabel(y=y-1, x=x+1, input=" Sta(r)t date: ")
+		self.gui.addUIElement('list', 'startDateM', self.tab, self.locations, 3, 6, months, False, False)
+		self.gui.addUIElement('list', 'startDateD', self.tab, self.locations, 3, 6, days, False, False)
+		self.gui.addUIElement('list', 'startDateY', self.tab, self.locations, 3, 6, years, False, False)
+		self.gui.addLabel(index='startDateM', input='Mon', justify='center', color=4)
+		self.gui.addLabel(index='startDateD', input='Day', justify='center', color=4)
+		self.gui.addLabel(index='startDateY', input='Year', justify='right', color=4)
+
+		y,x = self.gui.getLocation(self.locations, 'length')
+		self.gui.addLabel(y=y-1, x=x+1, input='(L)ength:')
+		self.gui.addUIElement('list', 'length', self.tab, self.locations, 3, 8, lengths, False, False)
+		self.gui.addLabel(index='length', input='Min', justify='center', color=4)
+
+		y,x = self.gui.getLocation(self.locations, 'startH')
+		self.gui.addLabel(y=y-1, x=x+1, input='(S)tart Time:')
+		self.gui.addUIElement('list', 'startH', self.tab, self.locations, 3, 6, hours, False, False)
+		self.gui.addUIElement('list', 'startM', self.tab, self.locations, 3, 8, mins, False, False)
+		self.gui.addLabel(index='startH', input='Hr', justify='center', color=4)
+		self.gui.addLabel(index='startM', input='Min', justify='center', color=4)
+
+		y,x = self.gui.getLocation(self.locations, 'endH')
+		self.gui.addLabel(y=y-1, x=x+1, input='End (T)ime:')
+		self.gui.addUIElement('list', 'endH', self.tab, self.locations, 3, 6, hours, box=False, highlighted=False)
+		self.gui.addUIElement('list', 'endM', self.tab, self.locations, 3, 8, mins, False, False)
+		self.gui.addLabel(index='endH', input='Hr', justify='center', color=4)
+		self.gui.addLabel(index='endM', input='Min', justify='center', color=4)
+
+		# Buttons
+		self.gui.addUIElement('button', 'submit', self.tab, self.locations, text='(Q)uery')
+		self.gui.addUIElement('button', 'back', self.tab, self.locations, text='(B)ack')
+		self.gui.addUIElement('button', 'exit', self.tab, self.locations, text='E(x)it')
+
+	def mainLoop(self):
+		"""
+		Catches key presses and determines what to do with them
+		"""
+		# determines action of each key listed
+		keyMaps = {ord('x'): '_jumpToWin(self, "exit")',
+				ord('\t'): '_moveTab(self, +1)',
+				ord('\n'): 'processEnter(self)',
+				ord('a'): '_jumpToWin(self, "addSlot")',
+				ord('b'): '_jumpToWin(self, "back")',
+				ord('c'): '_jumpToWin(self, "selectedUsers")',
+				ord('d'): '_jumpToWin(self, "domain")',
+				ord('e'): '_jumpToWin(self, "timeDates")',
+				ord('l'): '_jumpToWin(self, "length")',
+				ord('q'): '_jumpToWin(self, "submit")',
+				ord('t'): '_jumpToWin(self, "startDateM")',
+				ord('s'): '_jumpToWin(self, "startH")',
+				ord('u'): '_jumpToWin(self, "inputUser")',
+				curses.KEY_DOWN: '_processUpDown(self, +1)',
+				curses.KEY_UP: '_processUpDown(self, -1)',
+				curses.KEY_LEFT: '_moveTab(self, -1)',
+				curses.KEY_RIGHT: '_moveTab(self, +1)'
+				}
+		while True:
+			event = self.gui.screen.getch()
+			if (event in keyMaps):
+				exec(keyMaps[event])
+
+			self.gui.redrawGUI(self.tab.tab)
+
 
 class mainGui:
 	"""
@@ -863,7 +1028,9 @@ class mainGui:
 			event = self.gui.screen.getch()
 			if event == ord('\n'):
 				newWin = self.processEnter()
-				if newWin == 2:
+				if newWin == 1:
+					userSchedule().mainLoop()
+				elif newWin == 2:
 					whenToMeet().mainLoop()
 				elif newWin == 3:
 					prog = whoToExpect()
@@ -890,9 +1057,9 @@ class mainGui:
 			curWin.modified = True
 
 	def processEnter(self):
-		# if self.tab.tab == self.gui.getMap('meeting'):
-		# 	self.gui.cleanGUI()
-		# 	return 1
+		if self.tab.tab == self.gui.getMap('meeting'):
+			self.gui.cleanGUI()
+			return 1
 		if self.tab.tab == self.gui.getMap('spec'):
 			self.gui.cleanGUI()
 			return 2
