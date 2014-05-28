@@ -12,7 +12,6 @@
 from interface import *
 from timemanip import *
 from curseswrapper import *
-import time
 import MySQLdb
 
 def _addDateTime(self):
@@ -838,12 +837,12 @@ class userSchedule:
 		self.gui.screen.clear()
 		self.tab = tabstop()
 		# array of tuples, taking the type: { 'date': 'MM/DD/YYYY', 'times': ['MM:HH'] }
-		self.dates = []
+		# self.dates = []
 		self.locations = []
 		self.user = ""
 		# will hold the dates to check for multiple dates and times
-		self.warningY = 28
-		self.warningX = 42
+		self.warningY = 20
+		self.warningX = 43
 		self.buildWindows()
 		self.setSelections()
 		self.tab.tab = 0
@@ -879,11 +878,10 @@ class userSchedule:
 		self.locations.append({'win': 'startDateM', 'x': 42, 'y': 8})
 		self.locations.append({'win': 'startDateD', 'x': 47, 'y': 8})
 		self.locations.append({'win': 'startDateY', 'x': 51, 'y': 8})
-		self.locations.append({'win': 'length', 'x': 42, 'y': 12})
-		self.locations.append({'win': 'startH', 'x': 42, 'y': 16})
-		self.locations.append({'win': 'startM', 'x': 46, 'y': 16})
-		self.locations.append({'win': 'endH', 'x': 42, 'y': 20})
-		self.locations.append({'win': 'endM', 'x': 46, 'y': 20})
+		self.locations.append({'win': 'startH', 'x': 42, 'y': 12})
+		self.locations.append({'win': 'startM', 'x': 46, 'y': 12})
+		self.locations.append({'win': 'endH', 'x': 42, 'y': 16})
+		self.locations.append({'win': 'endM', 'x': 46, 'y': 16})
 		self.locations.append({'win': 'addSlot', 'x': 1, 'y': 3})
 		self.locations.append({'win': 'submit', 'x': 1, 'y': 3})
 		self.locations.append({'win': 'back', 'x': 13, 'y': 3})
@@ -905,8 +903,6 @@ class userSchedule:
 		win.selection = 8
 		win = self.gui.getWin('endH')
 		win.selection = 18
-		win = self.gui.getWin('length')
-		win.selection = 3
 
 	def buildWindows(self):
 		"""
@@ -914,9 +910,6 @@ class userSchedule:
 		"""
 		self._setOrientation()
 
-		maxY, maxX = self.gui.screen.getmaxyx()
-		interval = maxY / 10
-		self.warningY = (interval * 3) + 15
 		self.gui.addLabel(y=1,x=1,input=" When is the user available? ")
 		# Listing windows
 		y,x = self.gui.getLocation(self.locations, 'inputUser')
@@ -940,11 +933,6 @@ class userSchedule:
 		self.gui.addLabel(index='startDateM', input='Mon', justify='center', color=4)
 		self.gui.addLabel(index='startDateD', input='Day', justify='center', color=4)
 		self.gui.addLabel(index='startDateY', input='Year', justify='right', color=4)
-
-		y,x = self.gui.getLocation(self.locations, 'length')
-		self.gui.addLabel(y=y-1, x=x+1, input=' (L)ength: ')
-		self.gui.addUIElement('list', 'length', self.tab, self.locations, 3, 8, lengths, False, False)
-		self.gui.addLabel(index='length', input='Min', justify='center', color=4)
 
 		y,x = self.gui.getLocation(self.locations, 'startH')
 		self.gui.addLabel(y=y-1, x=x+1, input=' (S)tart Time: ')
@@ -977,7 +965,6 @@ class userSchedule:
 				ord('b'): '_jumpToWin(self, "back")',
 				ord('c'): '_jumpToWin(self, "user")',
 				ord('h'): '_jumpToWin(self, "saneDefault")',
-				ord('l'): '_jumpToWin(self, "length")',
 				ord('q'): '_jumpToWin(self, "submit")',
 				ord('r'): '_jumpToWin(self, "startDateM")',
 				ord('s'): '_jumpToWin(self, "startH")',
@@ -1000,80 +987,161 @@ class userSchedule:
 		Prepares to query the calendar API and determine the available times.
 		"""
 		# error catching
-		if not self.selected:
-			self.gui.addNotification(self.warningY, self.warningX, "No users selected", 5)
+		if not self.user:
+			self.gui.addNotification(self.warningY, self.warningX, "No user entered", 5)
 			return
-		if not self.dates:
-			self.gui.addNotification(self.warningY, self.warningX, "No date/times selected", 5)
-			return
+		# if not self.dates:
+		# 	self.gui.addNotification(self.warningY, self.warningX, "No date/times selected", 5)
+		# 	return
 
 		self.gui.addNotification(self.warningY, self.warningX, "Processing request...", 5)
 		curWin = self.gui.getTab(self.tab.tab)
 		curWin.modified = True
 		
-		if self.calcTimesSlots():
+		if self.findUserWindow():
 			self.tab.tab = self.tab.maxTab
-			pass
 		else:
 			curWin.modified = False
 
-	def calcTimesSlots(self):
+	def findUserWindow(self):
 		"""
 		Makes the call to interface and eventually the calendar API. Creates a window object that lists the times returned
 		as available.
 		"""
 		# process the event
 		service = connection()
-		finalAvails = []
+		# sane default or specific day?
 		win = self.gui.getWin('saneDefault')
 		default  = win.checked
-		for date in self.dates:
-			user = person(self.user + "@onid.oregonstate.edu", int(date['length']), service.service)
-			if temp.errorFlag:
-				self.gui.addNotification(self.warningY, self.warningX, temp.errorMsg)
-				return False
-				
-			host = 'localhost'
-			username = 'root'
-			passwd = ''
-			database = 'Scheduling'
 
-			try:
-				db = MySQLdb.connect(host=host,user=username,passwd=passwd,db=database)
-			except:
-				self.gui.addNotification(self.warningY, self.warningX, "Issue connecting to the MySQL server. Check the connection.")
-				return False
-			sql = db.cursor()
-			query = 'SELECT scheduled_days, scheduled_start_time, scheduled_end_time, scheduled_start_date, scheduled_end_date FROM class AS cls INNER JOIN instructor AS ins ON ins.id = cls.instructor WHERE ins.username = "' + user + '"'
-			sql.execute(query)
-			for row in sql.fetchall():
-				classDays = parseDays(row[0])
-				classStart = fixTime(row[1])
-				classEnd = fixTime(row[2])
-				start = fixDate(row[3])
-				end = fixDate(row[4])
-				start = setDateTime(start, classStart)
-				end = setDateTime(end, classEnd)
-				user.addClassTimeBlock(classDays, classStart, classEnd, start, end)
-		# meeting object
+		user = person(self.user + "@onid.oregonstate.edu", 15, service.service)
+		if user.errorFlag:
+			self.gui.addNotification(self.warningY, self.warningX, user.errorMsg)
+			return False
+		
+		# make a call to the mysql database
+		host = 'localhost'
+		username = 'root'
+		passwd = ''
+		database = 'Scheduling'
+
+		try:
+			db = MySQLdb.connect(host=host,user=username,passwd=passwd,db=database)
+		except:
+			self.gui.addNotification(self.warningY, self.warningX, "Issue connecting to the MySQL server. Check the connection.")
+			return False
+		sql = db.cursor()
+		query = 'SELECT scheduled_days, scheduled_start_time, scheduled_end_time, scheduled_start_date, scheduled_end_date FROM class AS cls INNER JOIN instructor AS ins ON ins.id = cls.instructor WHERE ins.username = "' + self.user + '"'
+		sql.execute(query)
+		for row in sql.fetchall():
+			classDays = parseDays(row[0])
+			classStart = fixTime(row[1])
+			classEnd = fixTime(row[2])
+			start = fixDate(row[3])
+			end = fixDate(row[4])
+			start = setDateTime(start, classStart)
+			end = setDateTime(end, classEnd)
+			user.addClassTimeBlock(classDays, classStart, classEnd, start, end)
+		# window object
 		if default:
 			newWindow = window(user)
 		else:
-			newWindow = window(user, date['start'], date['stop'])
-		# run the algorithms
-		# window.availableDates
-		if newMeeting.availInTimeSlot():
-		# append dates and resulting times
-			finalAvails.append({'date': getDate(date['start']), 'times': newMeeting.availableTimes, 'length': date['length'] })
-		else:
-			self.gui.addNotification(self.warningY, self.warningX, "No users were found")
-			return False
+			start,end,length = self.gui.getStates()
+			newWindow = window(user, start, end)
 
 		sql.close()
 		# clean the gui, prep to load new window
 		self.gui.cleanGUI()
 		# make the new window, passing in the results from the query
-		whenToMeetResults(finalAvails,users).mainLoop()
+		userScheduleResults(newWindow.availableDates, self.user).mainLoop()
+	
+	def _goBack(self):
+		"""
+		Back to original screen
+		"""
+		self.gui.cleanGUI()
+		mainGui().mainLoop()
+
+class userScheduleResults:
+	def __init__(self, results, user):
+		self.gui = GUI()
+		self.gui.screen.clear()
+		self.tab = tabstop()
+		self.user = user
+		self.results = results
+		self.locations = []
+		self.warningY = 20
+		self.warningX = 43
+		self.buildWindows()
+		self.tab.tab = 0
+		self.gui.drawGUI(self.tab)
+		self.gui.redrawGUI(self.tab.tab)
+		self.enterMaps = {
+			'home': 'goHome(self)',
+			'exit': 'self.gui.close()\nexit()',
+			'back': 'self._goBack()',
+		}
+
+	def _setOrientation(self):
+		"""
+		Sets up the locations for windows based on sizes of the window.
+		"""
+		maxY, maxX = self.gui.screen.getmaxyx()
+		self.locations.append({'win': 'results', 'x': 3,'y': 11})
+		self.locations.append({'win': 'home', 'x': 2, 'y': 3})
+		self.locations.append({'win': 'back', 'x': 13, 'y': 3})
+		self.locations.append({'win': 'exit', 'x': 24, 'y': 3})
+
+	def buildWindows(self):
+		self._setOrientation()
+		maxY, maxX = self.gui.screen.getmaxyx()
+		interval = maxY / 10
+		self.gui.addLabel(y=1, x=1, input=" View Users Schedule ")
+		
+		y,x = self.gui.getLocation(self.locations, 'results')
+		self.gui.addLabel(y=y-4, x=x, input='Available Times for '+self.user)
+		self.gui.addLabel(y=y-2, x=x, input='(P)rev page | (N)ext Page')
+		self.gui.addUIElement('pagedWinTimes', 'results', self.tab, self.locations, (interval * 6), 24, self.results, True, True)
+		tempWin = self.gui.getWin('results')
+		tempWin.label = True
+		for x in self.results:
+			tempWin.selection.append(0)
+
+		self.gui.addUIElement('button', 'home', self.tab, self.locations, text='(H)ome')
+		self.gui.addUIElement('button', 'back', self.tab, self.locations, text='(B)ack')
+		self.gui.addUIElement('button', 'exit', self.tab, self.locations, text='E(x)it')
+
+	def mainLoop(self):
+		"""
+		Catches key presses and determines what to do with them
+		"""
+		# determines action of each key listed
+		keyMaps = {
+				ord('x'): '_jumpToWin(self, "exit")',
+				ord('\t'): '_moveTab(self, +1)',
+				ord('\n'): 'processEnter(self)',
+				ord('b'): '_jumpToWin(self, "back")',
+				ord('h'): '_jumpToWin(self, "home")',
+				ord('n'): 'win=self.gui.getWin("results")\nwin.changeFocus(+1)',
+				ord('p'): 'win=self.gui.getWin("results")\nwin.changeFocus(-1)',
+				curses.KEY_DOWN: '_processUpDown(self, +1)',
+				curses.KEY_UP: '_processUpDown(self, -1)',
+				curses.KEY_LEFT: '_moveTab(self, -1)',
+				curses.KEY_RIGHT: '_moveTab(self, +1)'
+				}
+		while True:
+			event = self.gui.screen.getch()
+			if (event in keyMaps):
+				exec(keyMaps[event])
+
+			self.gui.redrawGUI(self.tab.tab)
+
+	def _goBack(self):
+		"""
+		Back to original screen
+		"""
+		self.gui.cleanGUI()
+		userSchedule().mainLoop()
 
 class mainGui:
 	"""

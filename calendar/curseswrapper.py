@@ -25,10 +25,11 @@ def displayCheckbox(self, focus = False, highlight = False):
 	self.pad.refresh()
 	self.modified = False
 
-def displayStatic(self, focus = False, highlight = False):
+def displayDateTime(self, focus = False, highlight = False):
 	"""
-	Basic display for a static object (inputBox and button)
+	Specific display function for the date times
 	"""
+	# stops from updating unnecessarily
 	if not self.modified:
 		return
 	self.pad.clear()
@@ -36,13 +37,24 @@ def displayStatic(self, focus = False, highlight = False):
 		self.pad.bkgd(curses.color_pair(3))
 	else:
 		self.pad.bkgd(curses.color_pair(4))
-	try:
-		self.pad.addstr(1,2,self.text)
-	except:
-		pass
-	if self.box:
+	height, width = self.pad.getmaxyx() # get the size of the pad
+	height = height - 2 # remove padding
+	page = 0 # for pagination
+	if self.selection >= height:
+		page = self.selection / height # determines which page the current selection should be on
+	for x in range(0,height): # displays as many lines as can be clean fit inside the pad
+		index = x + (page * height) # holds the index for items to be displayed, as we are not just listing the first X amount
+		if (index) < len(self.items): # prevent out of range error
+			if focus:# and self.scrollable: # the object is focused, so there will be a color change, and it scrollable so we can display the cursor
+				if (index) == self.selection: # controls the highlighting of the current selection
+					self.pad.addstr(x+1,2, _getStringDateTime(self, index), curses.color_pair(2)) # differentiate
+				else:
+					self.pad.addstr(x+1,2, _getStringDateTime(self, index))
+			else:
+				self.pad.addstr(x+1,2, _getStringDateTime(self, index))
+	if self.box: # draws box is we are supposed to
 		self.pad.box()
-	self.pad.refresh()
+	self.pad.refresh() # redraw the pad
 	self.modified = False
 
 def displayList(self, focus = False, highlight = False):
@@ -77,44 +89,6 @@ def displayList(self, focus = False, highlight = False):
 		self.pad.box()
 	self.pad.refresh() # redraw the pad
 	self.modified = False	
-
-def displayDateTime(self, focus = False, highlight = False):
-	"""
-	Specific display function for the date times
-	"""
-	# stops from updating unnecessarily
-	if not self.modified:
-		return
-	self.pad.clear()
-	if highlight:
-		self.pad.bkgd(curses.color_pair(3))
-	else:
-		self.pad.bkgd(curses.color_pair(4))
-	height, width = self.pad.getmaxyx() # get the size of the pad
-	height = height - 2 # remove padding
-	page = 0 # for pagination
-	if self.selection >= height:
-		page = self.selection / height # determines which page the current selection should be on
-	for x in range(0,height): # displays as many lines as can be clean fit inside the pad
-		index = x + (page * height) # holds the index for items to be displayed, as we are not just listing the first X amount
-		if (index) < len(self.items): # prevent out of range error
-			if focus:# and self.scrollable: # the object is focused, so there will be a color change, and it scrollable so we can display the cursor
-				if (index) == self.selection: # controls the highlighting of the current selection
-					self.pad.addstr(x+1,2, _getStringDateTime(self, index), curses.color_pair(2)) # differentiate
-				else:
-					self.pad.addstr(x+1,2, _getStringDateTime(self, index))
-			else:
-				self.pad.addstr(x+1,2, _getStringDateTime(self, index))
-	if self.box: # draws box is we are supposed to
-		self.pad.box()
-	self.pad.refresh() # redraw the pad
-	self.modified = False
-
-def _getStringDateTime(self, index):
-	"""
-	Returns a readable string with times that are going to be checked
-	"""
-	return ((str(self.items[index]['start']) + ' - ' + str(self.items[index]['stop']) + ' : ' + str(self.items[index]['length']) + ' mins'))
 
 def displayPagedWindow(self, focus = False, highlight = False):
 	"""
@@ -152,13 +126,59 @@ def displayPagedWindow(self, focus = False, highlight = False):
 	self.pad.refresh() # redraw the pad
 	self.modified = False
 
-def getPagedTimeString(self, index):
+def displayWindow(self, focus = False, highlight = False):
 	"""
-	Helper function for the pagedWindow object
+	"""
+	# stops from updating unnecessarily
+	if not self.modified:
+		return
+	self.pad.clear()
+	# self.availabilities = {'date':None,'times':[]}
+	if self.label:
+		self.pad.addstr(1,2, self.items[self.focus]['date'], curses.color_pair(1))
+	if highlight:
+		self.pad.bkgd(curses.color_pair(3))
+	else:
+		self.pad.bkgd(curses.color_pair(4))
+	height, width = self.pad.getmaxyx() # get the size of the pad
+	height = height - 4 # remove padding
+	page = 0 # for pagination
+	if self.selection[self.focus] >= height:
+		page = self.selection[self.focus] / height # determines which page the current selection should be on
+	for x in range(0,height): # displays as many lines as can be clean fit inside the pad
+		index = x + (page * height) # holds the index for items to be displayed, as we are not just listing the first X amount
+		if (index) < len(self.items[self.focus]['times']): # prevent out of range error
+			if focus:# and self.scrollable: # the object is focused, so there will be a color change, and it scrollable so we can display the cursor
+				if (index) == self.selection[self.focus]: # controls the highlighting of the current selection
+					self.pad.addstr(x+3,2, getPagedString(self, index), curses.color_pair(2)) # differentiate
+				else:
+					self.pad.addstr(x+3,2, getPagedString(self, index))
+			else:
+				self.pad.addstr(x+3,2, getPagedString(self, index))
+	if self.box: # draws box is we are supposed to
+		self.pad.box()
+	self.pad.refresh() # redraw the pad
+	self.modified = False
 
-	Returns a string with formatted start and stop times
+def displayStatic(self, focus = False, highlight = False):
 	"""
-	return printTime(self.items[self.focus]['times'][index]) + ' - ' + printTime(self.items[self.focus]['times'][index] + self.items[self.focus]['length'])
+	Basic display for a static object (inputBox and button)
+	"""
+	if not self.modified:
+		return
+	self.pad.clear()
+	if highlight:
+		self.pad.bkgd(curses.color_pair(3))
+	else:
+		self.pad.bkgd(curses.color_pair(4))
+	try:
+		self.pad.addstr(1,2,self.text)
+	except:
+		pass
+	if self.box:
+		self.pad.box()
+	self.pad.refresh()
+	self.modified = False
 
 def displayUserString(self, focus = False, highlight = False):
 	"""
@@ -197,6 +217,23 @@ def displayUserString(self, focus = False, highlight = False):
 	self.pad.refresh() # redraw the pad
 	self.modified = False
 	#dates.append({'date': getDate(date['start']), 'users': newMeeting.availUsers, 'length': date['length'] })
+
+def _getStringDateTime(self, index):
+	"""
+	Returns a readable string with times that are going to be checked
+	"""
+	return ((str(self.items[index]['start']) + ' - ' + str(self.items[index]['stop']) + ' : ' + str(self.items[index]['length']) + ' mins'))
+
+def getPagedString(self, index):
+	return printTime(self.items[self.focus]['times'][index]) + ' - ' + printTime(self.items[self.focus]['times'][index] + 15)
+
+def getPagedTimeString(self, index):
+	"""
+	Helper function for the pagedWindow object
+
+	Returns a string with formatted start and stop times
+	"""
+	return printTime(self.items[self.focus]['times'][index]) + ' - ' + printTime(self.items[self.focus]['times'][index] + self.items[self.focus]['length'])
 
 def getPagedUsersString(self, index):
 	"""
@@ -316,6 +353,11 @@ class GUI:
 			newWin.display = displayUserString
 			self.windows.append(newWin)
 			self.mapWindows.append({mapping:tab.maxTab})
+		elif elem == 'pagedWinTimes':
+			newWin = pagedWindow(height, width, y, x, items, tab.maxTab, box, highlighted)
+			newWin.display = displayWindow
+			self.windows.append(newWin)
+			self.mapWindows.append({mapping:tab.maxTab})
 		elif elem == 'button':
 			self.windows.append(button(y, x, text, tab.maxTab, box, highlighted))
 			self.mapWindows.append({mapping:tab.maxTab})
@@ -417,7 +459,10 @@ class GUI:
 		else:
 			endDate = startDate
 		startTime = self._getTime("start")		# gets starting time, in standard format HH:MM
-		length = self.windows[self.getMap('length')].getSelectedValue() # gets the length attribute
+		try:
+			length = self.windows[self.getMap('length')].getSelectedValue() # gets the length attribute
+		except:
+			length = 15
 		# print self.winExists('endH')
 		try:
 			endTime = self._getTime("end")			# gets ending time\
@@ -644,12 +689,17 @@ class pagedWindow(listWindow):
 		self.modified = True
 		self.selection[self.focus] = self.selection[self.focus] + direction
 		# correct for going out of bounds
-	
-		if self.selection[self.focus] == len(self.items[self.focus]['times']):
-			self.selection[self.focus] = 0
-		if self.selection[self.focus] == -1:
-			self.selection[self.focus] = len(self.items[self.focus]['times']) - 1
-		
+		try:
+			if self.selection[self.focus] == len(self.items[self.focus]['times']):
+				self.selection[self.focus] = 0
+			if self.selection[self.focus] == -1:
+				self.selection[self.focus] = len(self.items[self.focus]['times']) - 1
+		except:
+			if self.selection[self.focus] == len(self.items[self.focus]['users']):
+				self.selection[self.focus] = 0
+			if self.selection[self.focus] == -1:
+				self.selection[self.focus] = len(self.items[self.focus]['users']) - 1
+
 		return True
 
 	def changeFocus(self, direction):
@@ -660,7 +710,7 @@ class pagedWindow(listWindow):
 		self.focus = self.focus + direction
 		if self.focus == len(self.items):
 			self.focus = 0
-		if self.focus == -	1:
+		if self.focus == - 1:
 			self.focus = len(self.items) - 1
 		return True
 
