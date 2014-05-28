@@ -9,8 +9,7 @@
 # |*	                               *|
 # \*************************************/
 
-from interface import *
-from timemanip import *
+from calendarAPI import *
 from curseswrapper import *
 import MySQLdb
 
