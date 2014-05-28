@@ -1,4 +1,4 @@
-#!
+#!/usr/bin/python
 # /*************************************\
 # |* Building the UI with Curses       *|
 # |* Written by Danny Burrows          *|
@@ -536,6 +536,7 @@ class whoToExpect:
 		self.warningY = 20
 		self.warningX = 54
 		self.buildWindows()
+		self.setSelections()
 		self.tab.tab = 0
 		self.gui.drawGUI(self.tab)
 		self.gui.redrawGUI(self.tab.tab)
@@ -554,6 +555,22 @@ class whoToExpect:
 			'length': '_addDateTime(self)',
 			'inputUser': 'getInput(self)'
 		}
+
+	def setSelections(self):
+		"""
+		Sets default selects to values that make sense
+		"""
+		now = datetime.now()
+		day = int(now.strftime("%d"))
+		month = int(now.strftime("%m"))
+		win = self.gui.getWin('startDateM')
+		win.selection = (month - 1)
+		win = self.gui.getWin('startDateD')
+		win.selection = (day - 1)
+		win = self.gui.getWin('startH')
+		win.selection = 8
+		win = self.gui.getWin('length')
+		win.selection = 3
 
 	def _setOrientation(self):
 		"""
@@ -953,7 +970,8 @@ class userSchedule:
 		Catches key presses and determines what to do with them
 		"""
 		# determines action of each key listed
-		keyMaps = {ord('x'): '_jumpToWin(self, "exit")',
+		keyMaps = {
+				ord('x'): '_jumpToWin(self, "exit")',
 				ord('\t'): '_moveTab(self, +1)',
 				ord('\n'): 'processEnter(self)',
 				ord('b'): '_jumpToWin(self, "back")',
@@ -976,6 +994,86 @@ class userSchedule:
 				exec(keyMaps[event])
 
 			self.gui.redrawGUI(self.tab.tab)
+
+	def submitRequest(self):
+		"""
+		Prepares to query the calendar API and determine the available times.
+		"""
+		# error catching
+		if not self.selected:
+			self.gui.addNotification(self.warningY, self.warningX, "No users selected", 5)
+			return
+		if not self.dates:
+			self.gui.addNotification(self.warningY, self.warningX, "No date/times selected", 5)
+			return
+
+		self.gui.addNotification(self.warningY, self.warningX, "Processing request...", 5)
+		curWin = self.gui.getTab(self.tab.tab)
+		curWin.modified = True
+		
+		if self.calcTimesSlots():
+			self.tab.tab = self.tab.maxTab
+			pass
+		else:
+			curWin.modified = False
+
+	def calcTimesSlots(self):
+		"""
+		Makes the call to interface and eventually the calendar API. Creates a window object that lists the times returned
+		as available.
+		"""
+		# process the event
+		service = connection()
+		finalAvails = []
+		win = self.gui.getWin('saneDefault')
+		default  = win.checked
+		for date in self.dates:
+			user = person(self.user + "@onid.oregonstate.edu", int(date['length']), service.service)
+			if temp.errorFlag:
+				self.gui.addNotification(self.warningY, self.warningX, temp.errorMsg)
+				return False
+				
+			host = 'localhost'
+			username = 'root'
+			passwd = ''
+			database = 'Scheduling'
+
+			try:
+				db = MySQLdb.connect(host=host,user=username,passwd=passwd,db=database)
+			except:
+				self.gui.addNotification(self.warningY, self.warningX, "Issue connecting to the MySQL server. Check the connection.")
+				return False
+			sql = db.cursor()
+			query = 'SELECT scheduled_days, scheduled_start_time, scheduled_end_time, scheduled_start_date, scheduled_end_date FROM class AS cls INNER JOIN instructor AS ins ON ins.id = cls.instructor WHERE ins.username = "' + user + '"'
+			sql.execute(query)
+			for row in sql.fetchall():
+				classDays = parseDays(row[0])
+				classStart = fixTime(row[1])
+				classEnd = fixTime(row[2])
+				start = fixDate(row[3])
+				end = fixDate(row[4])
+				start = setDateTime(start, classStart)
+				end = setDateTime(end, classEnd)
+				user.addClassTimeBlock(classDays, classStart, classEnd, start, end)
+		# meeting object
+		if default:
+			newWindow = window(user)
+		else:
+			newWindow = window(user, date['start'], date['stop'])
+		# run the algorithms
+		# window.availableDates
+		if newMeeting.availInTimeSlot():
+		# append dates and resulting times
+			finalAvails.append({'date': getDate(date['start']), 'times': newMeeting.availableTimes, 'length': date['length'] })
+		else:
+			self.gui.addNotification(self.warningY, self.warningX, "No users were found")
+			return False
+
+		sql.close()
+		# clean the gui, prep to load new window
+		self.gui.cleanGUI()
+		# make the new window, passing in the results from the query
+		whenToMeetResults(finalAvails,users).mainLoop()
 
 class mainGui:
 	"""
