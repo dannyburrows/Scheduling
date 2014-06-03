@@ -632,7 +632,7 @@ def parseDays(input):
 
   return temp
 
-def addSQLBlocks(user):
+def addSQLBlocks(user, onid):
   host = 'localhost'
   username = 'root'
   passwd = ''
@@ -641,7 +641,7 @@ def addSQLBlocks(user):
   try:
     db = MySQLdb.connect(host=host,user=username,passwd=passwd,db=database)
     sql = db.cursor()
-    query = 'SELECT scheduled_days, scheduled_start_time, scheduled_end_time, scheduled_start_date, scheduled_end_date FROM class AS cls INNER JOIN instructor AS ins ON ins.id = cls.instructor WHERE ins.username = "' + user + '"'
+    query = 'SELECT scheduled_days, scheduled_start_time, scheduled_end_time, scheduled_start_date, scheduled_end_date FROM class AS cls INNER JOIN instructor AS ins ON ins.id = cls.instructor WHERE ins.username = "' + onid + '"'
     sql.execute(query)
     for row in sql.fetchall():
       classDays = parseDays(row[0])
@@ -768,10 +768,10 @@ Type onid usernames here...
     <td valign=top>
     <label for='length'>Meeting Length:</label> 
     <select name="length">
-    <option value="00" selected>00</option>
-    <option value="15">15</option>
+    <option value="15" selected>15</option>
     <option value="30">30</option>
     <option value="45">45</option>
+    <option value="60">60</option>
     </select>
     </td></tr>
     <tr><td valign=top> 
@@ -798,8 +798,8 @@ Type onid usernames here...
     </td></tr>
     <tr>
     <td valign=top> 
-    <label for='time1'>End time:</label> Hour 
-    <select name="hour1">
+    <label for='time2'>End time:</label> Hour 
+    <select name="hour2">
     <option value="8" selected>8 AM</option>
     <option value="9">9 AM</option>
     <option value="10">10 AM</option>
@@ -812,7 +812,7 @@ Type onid usernames here...
     <option value="17">5 PM</option>
     <option value="18">6 PM</option>
     </select>
-    Minutes: <select name="min1">
+    Minutes: <select name="min2">
     <option value="00" selected>00</option>
     <option value="15">15</option>
     <option value="30">30</option>
@@ -1041,19 +1041,30 @@ class searchSchedule(webapp2.RequestHandler):
 
 class filterQuery(webapp2.RequestHandler):
   def post(self):
+    global service
+    users = self.request.get('onid').split(';')
+    date = cgi.escape(self.request.get('SearchDate'))
+    startTime = cgi.escape(self.request.get('StartTime'))
+    endTime = cgi.escape(self.request.get('Endtime'))
+    self.response.write(cgi.escape(date))
+    self.response.write(cgi.escape(startTime))
+    self.response.write(cgi.escape(endTime))
+    onidusers = []
+    for userName in users:
+      oniduser.append(user + "@onid.oregonstate.edu", length, service)
+      addSQLBlocks(oniduser, userName)      
+      self.response.write(cgi.escape(userName) + "<br>")
+
+    newMeeting = meeting(startTime, endTime, length, onidusers)
+
     self.response.write(MAIN_HEADER % 'Query Results')
     self.response.write("""
       <h1>Search by Time</h1>
     <div data-role="content" class="ui-content" role="main">
     <div class="center-wrapper">""")
     self.response.write("<br><h2>Results</h2><br>")
-    self.response.write(cgi.escape(self.request.get('onid')))
-    self.response.write("<br>")
-    self.response.write(cgi.escape(self.request.get('SearchDate')))
-    self.response.write("<br>")
-    self.response.write(cgi.escape(self.request.get('StartTime')))
-    self.response.write("<br>")
-    self.response.write(cgi.escape(self.request.get('Endtime')))
+    #self.response.write(cgi.escape(self.request.get('onid')))
+
     self.response.write(MAIN_END)
 
 class queryTime(webapp2.RequestHandler):
