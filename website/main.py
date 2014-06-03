@@ -2,6 +2,7 @@
 
 import httplib2
 import os
+import MySQLdb
 
 from apiclient import discovery
 from oauth2client import appengine
@@ -11,192 +12,43 @@ from datetime import *
 
 import webapp2
 import jinja2
-
-#################################################
-#      Datetime manipulation functions    #
-#################################################
-
-def getStringDate(input):
-  """
-    Accepts a datetime object and returns a string with just the month day and year in MM/DD/YYYY format
-  """
-  return input.strftime("%m/%d/%Y")
-
-def getDayOfYear(input):
-  """
-    Accepts a datetime object and returns an integer with the day of the year, useful in looping
-  """
-  return int(input.strftime("%j"))
-def getYear(input):
-  """
-    Accepts a datetime object and returns an integer with the year
-  """
-  return int(input.strftime("%y"))
-
-def getHour(input):
-  """
-    Accepts a datetime object, returns the hours
-  """
-  return int(str(input)[11:13])
-
-def getMins(input):
-  """
-    Accepts a datetime object, returns the minutes
-  """
-  return int(str(input)[14:16])
-
-def getDayOfWeek(input):
-  """
-    Accepts a datetime object, returns the day of the week
-
-    For checking purposes, leaving as a string, typecast result
-    if an int is needed
-  """
-  return input.strftime("%w")
-
-#################################################
-#        String manipulation functions    #
-#################################################
-
-def getTime(input):
-  """
-    Accepts a full string datetime and returns just the time
-  """
-  return input[11:]
-
-
-def getDate(input):
-  """
-    Accepts a full string, returns date
-  """
-  return input[0:10]
-
-def convertToDatetime(input):
-  """
-    Accepts a formatted string and returns a datetime format
-  """
-  return datetime.strptime(input[0:10],"%m/%d/%Y")
-
-def convertToDatetimeFull(input):
-  """
-    Accepts a formatted string, returns datetime with hours, mins and secs
-  """
-  return datetime.strptime(input, "%Y-%m-%d %H:%M:%S")
-
-def getCorrectedTime(input):
-    """
-      Takes a string in the format "04/10/2014 08:00" and sets the year date and mins of current object
-    """
-    temp = datetime.strptime(input[0:10], '%m/%d/%Y')
-    year = int(temp.strftime("%y"))
-    date = int(temp.strftime("%j"))
-    mins = int(input[11:13]) * 60 + int(input[14:16])
-    return year, date, mins
-
-def simpleParse(input):
-  """
-    Takes a google date time and parses to the proper format. Previously used dateutil.parser, no longer needed
-  """
-  if input[11:] == "":
-    ending = "00:00:00"
-  else:
-    ending = input[11:]
-  return input[0:10] + " " + ending
-#################################################
-#        Displaying and calculations      #
-#################################################
-
-def printTime(input, milTime = False):
-  # moved outside of meeting as we need for single user availability
-  midDay = ""
-  hours = int(input) / 60
-  if not milTime:
-    midDay = "AM"
-    if hours == 00:
-      hours = 12
-    elif hours >= 12:
-      if hours >= 13:
-        hours = hours - 12
-      midDay = "PM"
-  mins = int(input) % 60
-  time = "%02d:%02d " % (hours, mins) + midDay
-  return time
-
-def getTotalMinutes(hours, mins):
-  return hours * 60 + mins
-
-
-def fixDate(input):
-  input = input.split('/')
-  month = input[0].zfill(2)
-  day = input[1].zfill(2)
-  year = str(int(input[2]) + 2000)
-  return month + '/' + day + '/' + year
-
-def fixTime(input):
-  input = input.zfill(4)
-  return input[0:2] + ':' + input[2:4]
-
-def setDateTime(date, hour):
-  return date + ' ' + hour
-
-def parseDays(input):
-  days = {'S': 0,
-      'M': 1,
-      'T': 2,
-      'W': 3,
-      'R': 4,
-      'F': 5,
-      'A': 6}
-  temp = ''
-  for day in input:
-    temp = temp + str(days[day])
-
-  return temp
+import cgi
+#####################################################################
+# Authors: Group 2 - Danny Burrows, Jonathan Jones, Laura Clampitt  #
+# Oregon State University                                           #
+# CS419 - Spring 2014                                               #
+#                                                                   #
+# Integrates the Google Calendar API with python. Takes a username  #
+# that has a public calendar and a start and stop time, then        #
+# returns a list of availabilities for that user based on their     #
+# calendar                                                          #
+#####################################################################
 
 class unavailTime:
-  """
-    unavailTime
-
-    This class is designed as a data structure for a time frame. A break down of functionalities follow:
-
-    getStart(), getEnd(), setStart(), setEnd()
-    --standard getter and setters
-    --sets expect a unicoded format of time
-
-    getMinuteOfDay(flag)
-    --returns an integer that is the minute of the day, based on the equation hour*60 + minutes
-    --flag is a boolean, 0 for the start, 1 for end
-
-    getNumericalDate(flag)
-    --returns a numerical representation of the date for comparison purposes
-    --flag is a boolean, 0 for the start, 1 for the end
-
-    _updateLength()
-    --checks if both end and start have been set, if so calculates and sets the length
-
-    check()
-    --a few small checks for the class instance
-    --if an assert fails, catches and returns false, allowing program to continue
-    --should be used every time a new unavailTime is created
-  """
   def __init__(self, start = None, end = None):
-    self.start = start
-    self.end = end
-    self.length = -1
+    self.start = start  # will be a string representation of start time
+    self.end = end      # will be a string representation of end time
+    self.length = -1    # length of the time block
     self._updateLength()
 
-  def getStart(self):
-    return self.start
+  def check(self):
+    """
+    Ensures everything added properly
+    """
+    try:
+      assert self.start
+      assert self.end
+      assert self.length
+      return True
+    except:
+      return False
 
-  def getEnd(self):
-    return self.end
-
-  def getLength(self):
-    return self.length
-
-  # flag determines whether start or end is returned
   def getMinuteOfDay(self, flag):
+    """
+    Converts time to minutes from string.
+
+    flag - determines whether start or end time is requested
+    """
     if not flag:
       mins = getMins(self.start)
       hours = getHour(self.start)
@@ -207,31 +59,26 @@ class unavailTime:
     return 60 * hours + mins
 
   def getNumericalDate(self, flag):
+    """
+    Gets the day of the year in (based on 365/6 days)
+
+    flag - determines whether start or end time is requested
+    """
     if not flag:
-      numDate = getDayOfYear(self.start)#int(self.start.strftime("%j"))
-      numYear = getYear(self.start)#int(self.start.strftime("%y"))
+      numDate = getDayOfYear(self.start)
+      numYear = getYear(self.start)
     else:
-      numDate = getDayOfYear(self.end)#int(self.end.strftime("%j"))
-      numYear = getYear(self.end)#int(self.end.strftime("%y"))
+      numDate = getDayOfYear(self.end)
+      numYear = getYear(self.end)
 
     return numDate,numYear
 
-  def setStart(self, start, google = True):
-    """
-      Sets the start time of the block. There is a bit of brute force here due to the unicode calendar object being returned from Google.
-    """
-    if google:
-      temp = simpleParse(start)
-      temp = temp[:19]
-      self.start = convertToDatetimeFull(temp)
-    else:
-      self.start = start
-    self._updateLength()
-    return True
-
   def setEnd(self, end, google = True):
     """
-      Sets the end time of the block. There is a bit of brute force here due to the unicode calendar object being returned from Google.
+    Sets the end time of the block. There is a bit of brute force here due to the unicode calendar object being returned from Google.
+
+    end - string or unicode datetime structure
+    google - if google source, time object is unicode and is handled differently
     """
     if google:
       temp = simpleParse(end) # turn unicode to string
@@ -242,8 +89,26 @@ class unavailTime:
     self._updateLength()
     return True
 
-  # sets the length if there is both a start and end time
+  def setStart(self, start, google = True):
+    """
+    Sets the starting time block.
+
+    start - string or unicode datetime structure
+    google - if google source, time object is unicode and is handled differently
+    """
+    if google:
+      temp = simpleParse(start)
+      temp = temp[:19]
+      self.start = convertToDatetimeFull(temp)
+    else:
+      self.start = start
+    self._updateLength()
+    return True
+
   def _updateLength(self):
+    """
+    Sets the length if there is both a start and end time
+    """
     if self.end and self.start:
       # a VERY rough calculated of length
       hourS = getHour(self.start)
@@ -254,14 +119,12 @@ class unavailTime:
       return True
     return False
 
-  def check(self):
-    try:
-      assert self.start
-      assert self.end
-      assert self.length
-      return True
-    except:
-      return False
+  def printBlock(self):
+    """
+    Displays both the start and end time blocks.
+    Used in debugging.
+    """
+    print self.start, self.end
 
 class person:
   """
@@ -273,17 +136,19 @@ class person:
   """
   def __init__(self, userName, length, service = None, google = True):
     assert userName
-    self.service = service
-    self.meetingLength = length
-    self.blockedTimes = []
-    self.availabilities = {'date':None,'times':[]}
-    self.userName = userName
-    self.errorFlag = False
-    self.errorMsg = ""
+    self.service = service        # google flow service object 
+    self.meetingLength = length   # length of the meeting
+    self.userName = userName      # users specific ONID, used for Google Calendar and MySQL database
+    self.errorFlag = False        # tells interface built on top of this that an error occured
+    self.errorMsg = ""            # used to communicated what the error was
+    self.blockedTimes = []        # list of blockted times, these will be unavailTime objects
+    self.availabilities = {'date':None,'times':[]} # dictionary of dates and available times
     self._process(google)
-    # if the source is the google calendar
   
   def _process(self, google):
+    """
+    Runs algorithms and connections to get the times the user is not available
+    """
     if google:
       assert self.service != None
       if not self._generateBlocks(self.service):
@@ -309,15 +174,15 @@ class person:
 
   def addClassTimeBlock(self, classDays, classStart, classEnd, startDay, endDay):
     """
-      Adds a blocked time for a class depending on the time frame being tested
-      and the days the class is in session.
+    Adds a blocked time for a class depending on the time frame being tested
+    and the days the class is in session.
 
-      classDays - a compressed string (eg "135") of the numerical days of the week
-      -this is expected from the database
-      classStart - time of day that the class starts; format HH:MM:SS
-      classEnd - time of day that the class ends; format HH:MM:SS
-      startDay - beginning date to look; format MM/DD/YYYY
-      endDay - ending date to check; format MM/DD/YYYY
+    classDays - a compressed string (eg "135") of the numerical days of the week
+    -this is expected from the database
+    classStart - time of day that the class starts; format HH:MM:SS
+    classEnd - time of day that the class ends; format HH:MM:SS
+    startDay - beginning date to look; format MM/DD/YYYY
+    endDay - ending date to check; format MM/DD/YYYY
     """
     # convert to datetime and pull day of year back out for the starting day
     sDay = convertToDatetime(startDay)
@@ -325,7 +190,13 @@ class person:
     # find the day of the year for the ending day to check
     eDay = convertToDatetime(endDay)
     eDayOfYear = getDayOfYear(eDay)
+    # there exists a fringe case where the end time is not divisible by 15 evenly that was causing an issue, this corrects that
 
+    tempEnd = getTotalMinutes(classEnd[:2], classEnd[3:])
+    while tempEnd % 15 != 0:
+      tempEnd = tempEnd + 5
+    
+    classEnd = convertTimeToString(tempEnd)
     # loopDay is the modified day of the year that is used to check against the days of the week
     loopDay = sDay
     for x in range(sDayOfYear, eDayOfYear + 1):
@@ -342,13 +213,6 @@ class person:
         self._addBlockedTime(addStart,addEnd, False)
       # increment the day of the year by 1
       loopDay = loopDay + timedelta(days=1)
-
-
-  def getUserName(self):
-    """
-      Simply provides an abstracted method to obtain user name
-    """
-    return self.userName
 
   def clearAvail(self):
     """
@@ -458,6 +322,339 @@ class person:
     return True
 
 
+class meeting:
+  """
+  A class that will find available users and available times for a list of users
+  """
+  def __init__(self, start, stop, length, users):
+    self.start = start            # beginning time of the meeting
+    self.stop = stop              # ending time of the meeting
+    self.length = length          # length of the meeting
+    self.users = users            # list of people user is checking
+    self.availableTimes = []      # will hold times all users are available
+    self.availUsers = []          # will hold names of all users that are available
+    self._findAllAvailabilities()
+
+  def _findAllAvailabilities(self):
+    """
+    Iterates availabilities for each user, trims times as necessary.
+    """
+    # find availabilities for each user
+    for x in self.users:
+      if not x.findAvailability(self.start, self.stop):
+        print "Error occurred in finding availability. Ensure meeting length >= 15."
+
+    # add the availability for first user
+    for i in self.users[0].availabilities['times']:
+      self.availableTimes.append(i)
+
+    # trim times that are not listed in each individual persons availability
+    # list comprehension
+    for i in range(1, len(self.users)):
+      self.availableTimes = [elem for elem in self.availableTimes if elem in self.users[i].availabilities['times']]
+  
+  def listAvailTimes(self, milTime):
+    """
+    Used in debugging, prints a list of available times after the algorithms have run
+    """
+    # this can be modified to something different, for whatever interface we end up using
+    for x in self.availableTimes:
+      print printTime(x, milTime)
+
+  def availInTimeSlot(self):
+    """
+    Takes a start and stop time and returns an array of user names that are available during the time frame
+    """
+    possTimes = []
+    availableUsers = []
+    timeFrame = 15
+    startYear, startDate, start = getCorrectedTime(self.start)
+    endYear, endDate, end = getCorrectedTime(self.stop)
+
+    for i in range(start, end, timeFrame):
+      possTimes.append(i)
+
+    # loop through all possible times in slot, if user is available entire time, add to available users
+    # else exclude from available users
+    for i in possTimes:
+      for j in self.users:
+        addUser = True
+        if i not in j.availabilities['times']:
+          addUser = False
+        if addUser:
+          availableUsers.append(j.userName)
+    # set removes duplicates, easy way to remove duplicates
+    if availableUsers:
+      self.availUsers = list(set(availableUsers))
+      return True
+    return False
+
+  def printAvailUsers(self):
+    """
+    Lists the users that are in availUsers, used in debugging
+
+    availUsers is appeneded in availInTimeSlot, which returns a list of people that are available
+    for the full time slot passed to the function
+    """
+    for user in self.availUsers:
+      print user
+
+class window:
+  """
+  Class that determines when an individual user is available
+  """
+  def __init__(self, user, startTime = None, endTime = None):
+    self.user = user            # user is a person() object
+    self.startTime = startTime  # string with start date and time
+    self.endTime = endTime      # string with end date and time
+    self.beginTime = None       # start of time window (HH:MM) to check
+    self.stopTime = None        # end of time window (HH:MM) to check
+    self.startDate = None       # start date to check (MM/DD/YYYY)
+    self.endDate = None         # end date to check (MM/DD/YYYY)
+    self.availableDates = []    # list of dictionaries that hold dates and times available
+
+    # ensure that is startTime or endTime is set, other is set as well
+    if startTime:
+      assert endTime
+    elif endTime:
+      assert startTime
+    self._constructTimes()
+
+
+  def printWindow(self, milTime):
+    """
+    Used in debugging, lists available dates and times for user
+    """
+    for i in self.availableDates:
+      print "------" + i['date'] + "------"
+      for availTime in i['times']:
+        print "      ",
+        print printTime(availTime, milTime)
+
+  def _constructTimes(self):
+    """
+    Helper function for _findAvail()
+    """
+    today = datetime.now()  # get today's date
+    loopDay = today # used in the while loop
+    
+    # if a window is selected, parse time and set time
+    if self.startTime and self.endTime:
+      startYear, self.startDate, start = getCorrectedTime(self.startTime) # ints for loops and manipulation
+      endYear, self.endDate, end = getCorrectedTime(self.endTime) # ints for loops and manipulation
+      loopDay = convertToDatetime(self.startTime) # gets the initial day of the year to start our loop
+      self.beginTime = getTime(self.startTime) # beginning time
+      self.stopTime = getTime(self.endTime) # ending time
+    else:
+      endDay = today + timedelta(days=7) # sets ending loop day, where start is today's date
+      self.startDate = getDayOfYear(today) # day of the year
+      self.endDate = getDayOfYear(endDay) # day of the year
+      self.beginTime = "08:00" # school hours
+      self.stopTime = "18:00" # school hours
+      start = 480
+      end = 1080
+
+    assert self.startDate <= self.endDate
+
+    self._findAvail(start, end, loopDay)
+    return True
+  
+  def _findAvail(self, start, end, loopDay):
+    """
+    Creates the list of dates and times that the user is available
+
+    start - integer day of the year to begin
+    end - integer day of the year to end
+    loopDay - initial day to start loop on
+    """
+    i = self.startDate
+    while i <= self.endDate:
+      stringDay = getStringDate(loopDay) # convert the looped day to day and year
+      start = stringDay + " " + str(self.beginTime) # get ready for findavailability call
+      end = stringDay + " " + str(self.stopTime)   # get ready for findavailability call
+
+      self.user.findAvailability(start,end) # list of availabilities
+      availTimes = self.user.availabilities # copy of availabilities
+      self.user.clearAvail()         # clear availabilities for next day
+
+      self.availableDates.append(availTimes) # add current availabilities to array
+      loopDay = loopDay + timedelta(days=1) # increment 1 day
+      i = i + 1
+    return True
+
+#################################################
+#      Datetime manipulation functions    #
+#################################################
+
+def getStringDate(input):
+  """
+    Accepts a datetime object and returns a string with just the month day and year in MM/DD/YYYY format
+  """
+  return input.strftime("%m/%d/%Y")
+
+def getDayOfYear(input):
+  """
+    Accepts a datetime object and returns an integer with the day of the year, useful in looping
+  """
+  return int(input.strftime("%j"))
+
+def getYear(input):
+  """
+    Accepts a datetime object and returns an integer with the year
+  """
+  return int(input.strftime("%y"))
+
+def getHour(input):
+  """
+    Accepts a datetime object, returns the hours
+  """
+  return int(str(input)[11:13])
+
+def getMins(input):
+  """
+    Accepts a datetime object, returns the minutes
+  """
+  return int(str(input)[14:16])
+
+def getDayOfWeek(input):
+  """
+    Accepts a datetime object, returns the day of the week
+
+    For checking purposes, leaving as a string, typecast result
+    if an int is needed
+  """
+  return input.strftime("%w")
+
+#################################################
+#        String manipulation functions    #
+#################################################
+
+def getTime(input):
+  """
+    Accepts a full string datetime and returns just the time
+  """
+  return input[11:]
+
+def getDate(input):
+  """
+    Accepts a full string, returns date
+  """
+  return input[0:10]
+
+def convertToDatetime(input):
+  """
+    Accepts a formatted string and returns a datetime format
+  """
+  return datetime.strptime(input[0:10],"%m/%d/%Y")
+
+def convertToDatetimeFull(input):
+  """
+    Accepts a formatted string, returns datetime with hours, mins and secs
+  """
+  # corrects an odd case where Google is returning time without seconds. Happens rarely but still was throwing an occasional error
+  if len(input) == 16:
+    input = input + ":00"
+  return datetime.strptime(input, "%Y-%m-%d %H:%M:%S")
+
+def getCorrectedTime(input):
+    """
+      Takes a string in the format "04/10/2014 08:00" and sets the year date and mins of current object
+    """
+    temp = datetime.strptime(input[0:10], '%m/%d/%Y')
+    year = int(temp.strftime("%y"))
+    date = int(temp.strftime("%j"))
+    mins = int(input[11:13]) * 60 + int(input[14:16])
+    return year, date, mins
+
+def simpleParse(input):
+  """
+    Takes a google date time and parses to the proper format. Previously used dateutil.parser, no longer needed
+  """
+  if input[11:] == "":
+    ending = "00:00:00"
+  else:
+    ending = input[11:]
+  return input[0:10] + " " + ending
+
+def convertTimeToString(input):
+  hours = int(input) / 60
+  mins = int(input) % 60
+  return str(hours).zfill(2) + ":" + str(mins).zfill(2)
+
+#################################################
+#        Displaying and calculations      #
+#################################################
+
+def printTime(input, milTime = False):
+  # moved outside of meeting as we need for single user availability
+  midDay = ""
+  hours = int(input) / 60
+  if not milTime:
+    midDay = "AM"
+    if hours == 00:
+      hours = 12
+    elif hours >= 12:
+      if hours >= 13:
+        hours = hours - 12
+      midDay = "PM"
+  mins = int(input) % 60
+  time = "%02d:%02d " % (hours, mins) + midDay
+  return time
+
+def getTotalMinutes(hours, mins):
+  return int(hours) * 60 + int(mins)
+
+def fixDate(input):
+  input = input.split('/')
+  month = input[0].zfill(2)
+  day = input[1].zfill(2)
+  year = str(int(input[2]) + 2000)
+  return month + '/' + day + '/' + year
+
+def fixTime(input):
+  input = input.zfill(4)
+  return input[0:2] + ':' + input[2:4]
+
+def setDateTime(date, hour):
+  return date + ' ' + hour
+
+def parseDays(input):
+  days = {'S': 0,
+      'M': 1,
+      'T': 2,
+      'W': 3,
+      'R': 4,
+      'F': 5,
+      'A': 6}
+  temp = ''
+  for day in input:
+    temp = temp + str(days[day])
+
+  return temp
+
+def addSQLBlocks(user):
+  host = 'localhost'
+  username = 'root'
+  passwd = ''
+  database = 'Scheduling'
+
+  try:
+    db = MySQLdb.connect(host=host,user=username,passwd=passwd,db=database)
+    sql = db.cursor()
+    query = 'SELECT scheduled_days, scheduled_start_time, scheduled_end_time, scheduled_start_date, scheduled_end_date FROM class AS cls INNER JOIN instructor AS ins ON ins.id = cls.instructor WHERE ins.username = "' + user + '"'
+    sql.execute(query)
+    for row in sql.fetchall():
+      classDays = parseDays(row[0])
+      classStart = fixTime(row[1])
+      classEnd = fixTime(row[2])
+      start = fixDate(row[3])
+      end = fixDate(row[4])
+      start = setDateTime(start, classStart)
+      end = setDateTime(end, classEnd)
+      user.addClassTimeBlock(classDays, classStart, classEnd, start, end)
+  except:
+    return False
+
 JINJA_ENVIRONMENT = jinja2.Environment(
     loader=jinja2.FileSystemLoader(os.path.dirname(__file__)),
     autoescape=True,
@@ -495,18 +692,384 @@ decorator = appengine.oauth2decorator_from_clientsecrets(
     ],
     message=MISSING_CLIENT_SECRETS_MESSAGE)
 
+MAIN_HEADER = """
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="http://fonts.googleapis.com/css?family=Gudea" rel="stylesheet" type="text/css">
+      <link href="http://oregonstate.edu/css/bootstrap.min.css" rel="stylesheet">
+      <link href="http://oregonstate.edu/css/style.css?v=1" rel="stylesheet">
+    <title>%s</title>
+  </head>
+
+  <body class='ui-mobile-viewport ui-overlay-c'>
+
+  <nav id="tophat" class="col-xs-12 hidden-xs">
+    <div class="container">
+        <a href="http://oregonstate.edu" class="tag" tabindex="1"><img alt="Oregon State University" src="img/osu-tag.png" /></a>
+    <ul class="nav navbar-nav">
+      <li><a href="http://oregonstate.edu/main/online-services" tabindex="1"><i class="fa fa-cogs"></i>Online Services</a></li>
+     <li><a href="http://calendar.oregonstate.edu/" tabindex="1"><i class="fa fa-calendar"></i>Calendar</a></li>
+      <li><a href="http://osulibrary.oregonstate.edu/" tabindex="1"><i class="fa fa-book"></i>Library</a></li>
+      <li><a href="http://oregonstate.edu/campusmap/" tabindex="1"><i class="fa fa-map-marker"></i>Maps</a></li>
+      <li><a href="https://osufoundation.org/giving/online_gift.shtml?first_designation=" tabindex="1"><i class="fa fa-gift"></i>Make a Gift</a></li>
+    </ul> 
+
+    <div class="search hidden-xs">
+      <form method="get" action="http://search.oregonstate.edu">
+       <label class="hidden" for="q">Find People and Pages</label>
+      <input class="searchbox" type="text" placeholder="Find People and Pages" name="q" id="q" size="26" maxlength="255" value=""  tabindex="1" autofocus/>
+       <input type="hidden" name="client" value="default_frontend" />
+       <input class="searchbutton" type="submit" value="SEARCH" tabindex="1"/>
+      </form>
+    </div>
+   </div> 
+  </nav>
+
+  <div class="container">
+   <nav role="navigation" aria-label="Main menu" class="navbar hidden-xs">
+     <ul id="primarynav" class="nav navbar-nav" role="menu">
+            <li><a href="/" role="menuitem" aria-haspopup="true">Search by Users</a>
+         <li><a href="/time" role="menuitem" aria-haspopup="true">Search by Available Times</a>
+<li><a href="/schedule" role="menuitem" aria-haspopup="true">View Schedules</a>
+    </nav>
+
+  <br><br>
+"""
+
+
+
+MAIN_END = """
+  </div></div></body>
+</html>
+"""
+
+
+SEARCH_USER = """
+
+  <div data-role="content" class="ui-content" role="main">
+  <div class="center-wrapper">
+  <br>
+    <form action='/queryuser' method='post' data-ajax='false'>
+    <table cellpadding=10 cellspacing=10 border=0>
+    <tr><td valign=top>
+    <label for='onid'>ONID username:</label> <br> To enter more than one username, please enter each onid username followed by a semi colon<br><br>
+    <textarea name="onid" cols="40" rows="4">
+Type onid usernames here...
+    </textarea>
+    </td><tr>
+    <tr>
+    <td valign=top>
+    <label for='date'>Start Date:</label> 
+    <input type='date' name='SearchDate' id='SearchDate'></td></tr>
+    <tr>
+    <td valign=top>
+    <label for='length'>Meeting Length:</label> 
+    <select name="length">
+    <option value="00" selected>00</option>
+    <option value="15">15</option>
+    <option value="30">30</option>
+    <option value="45">45</option>
+    </select>
+    </td></tr>
+    <tr><td valign=top> 
+    <label for='time1'>Start time:</label> Hour 
+    <select name="hour1">
+    <option value="8" selected>8 AM</option>
+    <option value="9">9 AM</option>
+    <option value="10">10 AM</option>
+    <option value="11">11 AM</option>
+    <option value="12">12 PM</option>
+    <option value="13">1 PM</option>
+    <option value="14">2 PM</option>
+    <option value="15">3 PM</option>
+    <option value="16">4 PM</option>
+    <option value="17">5 PM</option>
+    <option value="18">6 PM</option>
+    </select>
+    Minutes: <select name="min1">
+    <option value="00" selected>00</option>
+    <option value="15">15</option>
+    <option value="30">30</option>
+    <option value="45">45</option>
+    </select>
+    </td></tr>
+    <tr>
+    <td valign=top> 
+    <label for='time1'>End time:</label> Hour 
+    <select name="hour1">
+    <option value="8" selected>8 AM</option>
+    <option value="9">9 AM</option>
+    <option value="10">10 AM</option>
+    <option value="11">11 AM</option>
+    <option value="12">12 PM</option>
+    <option value="13">1 PM</option>
+    <option value="14">2 PM</option>
+    <option value="15">3 PM</option>
+    <option value="16">4 PM</option>
+    <option value="17">5 PM</option>
+    <option value="18">6 PM</option>
+    </select>
+    Minutes: <select name="min1">
+    <option value="00" selected>00</option>
+    <option value="15">15</option>
+    <option value="30">30</option>
+    <option value="45">45</option>
+    </select>
+    </td></tr>
+    
+    </table>
+    <input type='submit' value='Query'>
+    </form> 
+  </div>
+"""
+
+
+SEARCH_TIME = """
+
+  <div data-role="content" class="ui-content" role="main">
+  <div class="center-wrapper">
+  <br>
+    <form action='/querytime' method='post' data-ajax='false'>
+    <table cellpadding=10 cellspacing=10 border=0>
+    <tr><td valign=top colspan=2>
+    <label for='onid'>ONID username:</label> <br> To enter more than one username, please enter each onid username followed by a semi colon<br><br>
+    <textarea name="onid" cols="40" rows="3">
+Type onid usernames here...
+    </textarea>
+    </td></tr>
+    <tr>
+    <td valign=top>
+    <label for='date1'>Date:</label> 
+    <input type='date' name='SearchDate1' id='SearchDate1'>     </td>
+    <td valign=top>
+    <label for='time1'>Start time:</label> Hour 
+    <select name="hour1">
+    <option value="8" selected>8 AM</option>
+    <option value="9">9 AM</option>
+    <option value="10">10 AM</option>
+    <option value="11">11 AM</option>
+    <option value="12">12 PM</option>
+    <option value="13">1 PM</option>
+    <option value="14">2 PM</option>
+    <option value="15">3 PM</option>
+    <option value="16">4 PM</option>
+    <option value="17">5 PM</option>
+    <option value="18">6 PM</option>
+    </select>
+    Minutes: <select name="min1">
+    <option value="00" selected>00</option>
+    <option value="15">15</option>
+    <option value="30">30</option>
+    <option value="45">45</option>
+    </select>
+
+    </td>
+    </tr>
+    <tr>
+    <td valign=top>
+    <label for='date2'>Date:</label> 
+    <input type='date' name='SearchDate2' id='SearchDate2'>     </td>
+    <td valign=top>
+    <label for='time2'>Start time:</label> Hour 
+    <select name="hour2">
+    <option value="8" selected>8 AM</option>
+    <option value="9">9 AM</option>
+    <option value="10">10 AM</option>
+    <option value="11">11 AM</option>
+    <option value="12">12 PM</option>
+    <option value="13">1 PM</option>
+    <option value="14">2 PM</option>
+    <option value="15">3 PM</option>
+    <option value="16">4 PM</option>
+    <option value="17">5 PM</option>
+    <option value="18">6 PM</option>
+    </select>
+    Minutes: <select name="min2">
+    <option value="00" selected>00</option>
+    <option value="15">15</option>
+    <option value="30">30</option>
+    <option value="45">45</option>
+    </select>
+
+    </td>
+    </tr>
+    <tr>
+    <td valign=top>
+    <label for='date3'>Date:</label> 
+    <input type='date' name='SearchDate3' id='SearchDate3'>     </td>
+    <td valign=top>
+    <label for='time3'>Start time:</label> Hour 
+    <select name="hour3">
+    <option value="8" selected>8 AM</option>
+    <option value="9">9 AM</option>
+    <option value="10">10 AM</option>
+    <option value="11">11 AM</option>
+    <option value="12">12 PM</option>
+    <option value="13">1 PM</option>
+    <option value="14">2 PM</option>
+    <option value="15">3 PM</option>
+    <option value="16">4 PM</option>
+    <option value="17">5 PM</option>
+    <option value="18">6 PM</option>
+    </select>
+    Minutes: <select name="min3">
+    <option value="00" selected>00</option>
+    <option value="15">15</option>
+    <option value="30">30</option>
+    <option value="45">45</option>
+    </select>
+    </td>
+    </tr>
+    <tr>
+    <td valign=top colspan=2>
+    <label for='length'>Meeting Length:</label> 
+    <select name="length">
+    <option value="00" selected>00</option>
+    <option value="15">15</option>
+    <option value="30">30</option>
+    <option value="45">45</option>
+    </select>
+    </td></tr>
+    </table>
+    <input type='submit' value='Query'>
+    </form> 
+  </div>
+"""
+
+SEARCH_SCHEDULE = """
+
+  <div data-role="content" class="ui-content" role="main">
+  <div class="center-wrapper">
+  <br>
+    <form action='/queryschedule' method='post' data-ajax='false'>
+    <table cellpadding=10 cellspacing=10 border=0>
+    <tr><td valign=top>
+    <label for='onid'>ONID username:</label> 
+    <input type="text" name="onid">
+    </td><tr>
+    <tr>
+    <td valign=top>
+    <label for='date'>Start Date:</label> 
+    <input type='date' name='SearchDate' id='SearchDate'></td></tr>
+    <tr><td valign=top> 
+    <label for='time1'>Start time:</label> Hour 
+    <select name="hour1">
+    <option value="8" selected>8 AM</option>
+    <option value="9">9 AM</option>
+    <option value="10">10 AM</option>
+    <option value="11">11 AM</option>
+    <option value="12">12 PM</option>
+    <option value="13">1 PM</option>
+    <option value="14">2 PM</option>
+    <option value="15">3 PM</option>
+    <option value="16">4 PM</option>
+    <option value="17">5 PM</option>
+    <option value="18">6 PM</option>
+    </select>
+    Minutes: <select name="min1">
+    <option value="00" selected>00</option>
+    <option value="15">15</option>
+    <option value="30">30</option>
+    <option value="45">45</option>
+    </select>
+    </td></tr>
+    <tr>
+    <td valign=top> 
+    <label for='time1'>End time:</label> Hour 
+    <select name="hour1">
+    <option value="8" selected>8 AM</option>
+    <option value="9">9 AM</option>
+    <option value="10">10 AM</option>
+    <option value="11">11 AM</option>
+    <option value="12">12 PM</option>
+    <option value="13">1 PM</option>
+    <option value="14">2 PM</option>
+    <option value="15">3 PM</option>
+    <option value="16">4 PM</option>
+    <option value="17">5 PM</option>
+    <option value="18">6 PM</option>
+    </select>
+    Minutes: <select name="min1">
+    <option value="00" selected>00</option>
+    <option value="15">15</option>
+    <option value="30">30</option>
+    <option value="45">45</option>
+    </select>
+    </td></tr>
+    </table>
+    Check next 7 days availabilty<br><br>
+    <input type='submit' value='Query'>
+    </form> 
+  </div>
+"""
+
+
 class MainHandler(webapp2.RequestHandler):
+    def get(self):
+      self.response.write(MAIN_HEADER % 'OSU Scheduling Tool-search by users')
+      self.response.write("<h1>Search by Users</h1>")
+      self.response.write(SEARCH_USER)
+      self.response.write("<br><br>")
+      self.response.write(MAIN_END)
 
-  @decorator.oauth_aware
+
+class searchTime(webapp2.RequestHandler):
   def get(self):
-    test = person('burrows.danny@gmail.com', 60, service)
-    test.findAvailability("04/15/2014 07:00", "04/15/2014 21:00")
-    for x in test.availabilities['times']:
-      self.response.write("%s<br>" % x)
+    self.response.write(MAIN_HEADER % 'OSU Scheduling Tool-search by available times')
+    self.response.write("""
+      <h1>Search by Available Times</h1>
+    <div data-role="content" class="ui-content" role="main">
+    <div class="center-wrapper">""")
+    self.response.write(SEARCH_TIME)
+    self.response.write("<br><br>")
+    self.response.write(MAIN_END)
 
-app = webapp2.WSGIApplication(
-    [
-     ('/', MainHandler),
-     (decorator.callback_path, decorator.callback_handler()),
-    ],
-    debug=True)
+class searchSchedule(webapp2.RequestHandler):
+  def get(self):
+    self.response.write(MAIN_HEADER % 'OSU Scheduling Tool-view schedules')
+    self.response.write("""
+      <h1>View Schedules</h1>
+    <div data-role="content" class="ui-content" role="main">
+    <div class="center-wrapper">""")
+    self.response.write(SEARCH_SCHEDULE)
+    self.response.write("<br><br>")
+    self.response.write(MAIN_END)
+
+
+class filterQuery(webapp2.RequestHandler):
+  def post(self):
+    self.response.write(MAIN_HEADER % 'Query Results')
+    self.response.write("""
+      <h1>Search by Time</h1>
+    <div data-role="content" class="ui-content" role="main">
+    <div class="center-wrapper">""")
+    self.response.write("<br><h2>Results</h2><br>")
+    self.response.write(cgi.escape(self.request.get('onid')))
+    self.response.write("<br>")
+    self.response.write(cgi.escape(self.request.get('SearchDate')))
+    self.response.write("<br>")
+    self.response.write(cgi.escape(self.request.get('StartTime')))
+    self.response.write("<br>")
+    self.response.write(cgi.escape(self.request.get('Endtime')))
+    self.response.write(MAIN_END)
+
+class queryTime(webapp2.RequestHandler):
+  def get(self):
+    pass
+
+class querySchedule(webapp2.RequestHandler):
+  def get(self):
+    pass
+
+app = webapp2.WSGIApplication([
+    ('/', MainHandler),
+    #('/query', filterQuery),
+    ('/time', searchTime),
+    ('/schedule', searchSchedule),
+    ('/queryuser', filterQuery),
+    ('/queryTime', queryTime),
+    ('/querySchedule', querySchedule)
+    ], debug=True)
