@@ -24,6 +24,180 @@ import cgi
 # calendar                                                          #
 #####################################################################
 
+
+#################################################
+#      Datetime manipulation functions    #
+#################################################
+
+def getStringDate(input):
+  """
+    Accepts a datetime object and returns a string with just the month day and year in MM/DD/YYYY format
+  """
+  return input.strftime("%m/%d/%Y")
+
+def getDayOfYear(input):
+  """
+    Accepts a datetime object and returns an integer with the day of the year, useful in looping
+  """
+  return int(input.strftime("%j"))
+
+def getYear(input):
+  """
+    Accepts a datetime object and returns an integer with the year
+  """
+  return int(input.strftime("%y"))
+
+def getHour(input):
+  """
+    Accepts a datetime object, returns the hours
+  """
+  return int(str(input)[11:13])
+
+def getMins(input):
+  """
+    Accepts a datetime object, returns the minutes
+  """
+  return int(str(input)[14:16])
+
+def getDayOfWeek(input):
+  """
+    Accepts a datetime object, returns the day of the week
+
+    For checking purposes, leaving as a string, typecast result
+    if an int is needed
+  """
+  return input.strftime("%w")
+
+#################################################
+#        String manipulation functions    #
+#################################################
+
+def getTime(input):
+  """
+    Accepts a full string datetime and returns just the time
+  """
+  return input[11:]
+
+def getDate(input):
+  """
+    Accepts a full string, returns date
+  """
+  return input[0:10]
+
+def convertToDatetime(input):
+  """
+    Accepts a formatted string and returns a datetime format
+  """
+  return datetime.strptime(input[0:10],"%m/%d/%Y")
+
+def convertToDatetimeFull(input):
+  """
+    Accepts a formatted string, returns datetime with hours, mins and secs
+  """
+  # corrects an odd case where Google is returning time without seconds. Happens rarely but still was throwing an occasional error
+  if len(input) == 16:
+    input = input + ":00"
+  return datetime.strptime(input, "%Y-%m-%d %H:%M:%S")
+
+def getCorrectedTime(input):
+    """
+      Takes a string in the format "04/10/2014 08:00" and sets the year date and mins of current object
+    """
+    temp = datetime.strptime(input[0:10], '%m/%d/%Y')
+    year = int(temp.strftime("%y"))
+    date = int(temp.strftime("%j"))
+    mins = int(input[11:13]) * 60 + int(input[14:16])
+    return year, date, mins
+
+def simpleParse(input):
+  """
+    Takes a google date time and parses to the proper format. Previously used dateutil.parser, no longer needed
+  """
+  if input[11:] == "":
+    ending = "00:00:00"
+  else:
+    ending = input[11:]
+  return input[0:10] + " " + ending
+
+def convertTimeToString(input):
+  hours = int(input) / 60
+  mins = int(input) % 60
+  return str(hours).zfill(2) + ":" + str(mins).zfill(2)
+
+#################################################
+#        Displaying and calculations      #
+#################################################
+
+def printTime(input, milTime = False):
+  # moved outside of meeting as we need for single user availability
+  midDay = ""
+  hours = int(input) / 60
+  if not milTime:
+    midDay = "AM"
+    if hours == 00:
+      hours = 12
+    elif hours >= 12:
+      if hours >= 13:
+        hours = hours - 12
+      midDay = "PM"
+  mins = int(input) % 60
+  time = "%02d:%02d " % (hours, mins) + midDay
+  return time
+
+def getTotalMinutes(hours, mins):
+  return int(hours) * 60 + int(mins)
+
+def fixDate(input):
+  input = input.split('/')
+  month = input[0].zfill(2)
+  day = input[1].zfill(2)
+  year = str(int(input[2]) + 2000)
+  return month + '/' + day + '/' + year
+
+def fixTime(input):
+  input = input.zfill(4)
+  return input[0:2] + ':' + input[2:4]
+
+def setDateTime(date, hour):
+  return date + ' ' + hour
+
+def parseDays(input):
+  days = {'S': 0,
+      'M': 1,
+      'T': 2,
+      'W': 3,
+      'R': 4,
+      'F': 5,
+      'A': 6}
+  temp = ''
+  for day in input:
+    temp = temp + str(days[day])
+
+  return temp
+
+def addSQLBlocks(user, onid):
+  host = 'localhost'
+  username = 'root'
+  passwd = ''
+  database = 'Scheduling'
+
+  try:
+    db = MySQLdb.connect(host=host,user=username,passwd=passwd,db=database)
+    sql = db.cursor()
+    query = 'SELECT scheduled_days, scheduled_start_time, scheduled_end_time, scheduled_start_date, scheduled_end_date FROM class AS cls INNER JOIN instructor AS ins ON ins.id = cls.instructor WHERE ins.username = "' + onid + '"'
+    sql.execute(query)
+    for row in sql.fetchall():
+      classDays = parseDays(row[0])
+      classStart = fixTime(row[1])
+      classEnd = fixTime(row[2])
+      start = fixDate(row[3])
+      end = fixDate(row[4])
+      start = setDateTime(start, classStart)
+      end = setDateTime(end, classEnd)
+      user.addClassTimeBlock(classDays, classStart, classEnd, start, end)
+  except:
+    return False
+
 class unavailTime:
   def __init__(self, start = None, end = None):
     self.start = start  # will be a string representation of start time
@@ -285,6 +459,7 @@ class person:
     """
       Creates an array of blocked times by looping through the calendar object
     """
+    print "***CALLED***"
     # loop through calendar for this specific user and add blocked times as they are pulled from api
     try:
       page_token = None
@@ -293,6 +468,7 @@ class person:
         # pull the object, correcting timezone to central
         try:
           events = service.events().list(calendarId=self.userName , pageToken=page_token, timeZone='-5:00').execute()
+          print len(events)
         except:
           # cannot find the user for whatever reason
           return False
@@ -304,7 +480,6 @@ class person:
           except:
             eventStart = event['start']['date']
             eventEnd = event['end']['date']
-
           if not self._addBlockedTime(eventStart, eventEnd):
             # if for some reason adding a blocked time failed
             # we can catch it and process it here
@@ -321,7 +496,6 @@ class person:
       return False
     return True
 
-
 class meeting:
   """
   A class that will find available users and available times for a list of users
@@ -335,6 +509,7 @@ class meeting:
     self.availUsers = []          # will hold names of all users that are available
     self._findAllAvailabilities()
 
+
   def _findAllAvailabilities(self):
     """
     Iterates availabilities for each user, trims times as necessary.
@@ -342,7 +517,7 @@ class meeting:
     # find availabilities for each user
     for x in self.users:
       if not x.findAvailability(self.start, self.stop):
-        print "Error occurred in finding availability. Ensure meeting length >= 15."
+        print "Error occurred in finding availability."
 
     # add the availability for first user
     for i in self.users[0].availabilities['times']:
@@ -482,184 +657,10 @@ class window:
       i = i + 1
     return True
 
-#################################################
-#      Datetime manipulation functions    #
-#################################################
-
-def getStringDate(input):
-  """
-    Accepts a datetime object and returns a string with just the month day and year in MM/DD/YYYY format
-  """
-  return input.strftime("%m/%d/%Y")
-
-def getDayOfYear(input):
-  """
-    Accepts a datetime object and returns an integer with the day of the year, useful in looping
-  """
-  return int(input.strftime("%j"))
-
-def getYear(input):
-  """
-    Accepts a datetime object and returns an integer with the year
-  """
-  return int(input.strftime("%y"))
-
-def getHour(input):
-  """
-    Accepts a datetime object, returns the hours
-  """
-  return int(str(input)[11:13])
-
-def getMins(input):
-  """
-    Accepts a datetime object, returns the minutes
-  """
-  return int(str(input)[14:16])
-
-def getDayOfWeek(input):
-  """
-    Accepts a datetime object, returns the day of the week
-
-    For checking purposes, leaving as a string, typecast result
-    if an int is needed
-  """
-  return input.strftime("%w")
-
-#################################################
-#        String manipulation functions    #
-#################################################
-
-def getTime(input):
-  """
-    Accepts a full string datetime and returns just the time
-  """
-  return input[11:]
-
-def getDate(input):
-  """
-    Accepts a full string, returns date
-  """
-  return input[0:10]
-
-def convertToDatetime(input):
-  """
-    Accepts a formatted string and returns a datetime format
-  """
-  return datetime.strptime(input[0:10],"%m/%d/%Y")
-
-def convertToDatetimeFull(input):
-  """
-    Accepts a formatted string, returns datetime with hours, mins and secs
-  """
-  # corrects an odd case where Google is returning time without seconds. Happens rarely but still was throwing an occasional error
-  if len(input) == 16:
-    input = input + ":00"
-  return datetime.strptime(input, "%Y-%m-%d %H:%M:%S")
-
-def getCorrectedTime(input):
-    """
-      Takes a string in the format "04/10/2014 08:00" and sets the year date and mins of current object
-    """
-    temp = datetime.strptime(input[0:10], '%m/%d/%Y')
-    year = int(temp.strftime("%y"))
-    date = int(temp.strftime("%j"))
-    mins = int(input[11:13]) * 60 + int(input[14:16])
-    return year, date, mins
-
-def simpleParse(input):
-  """
-    Takes a google date time and parses to the proper format. Previously used dateutil.parser, no longer needed
-  """
-  if input[11:] == "":
-    ending = "00:00:00"
-  else:
-    ending = input[11:]
-  return input[0:10] + " " + ending
-
-def convertTimeToString(input):
-  hours = int(input) / 60
-  mins = int(input) % 60
-  return str(hours).zfill(2) + ":" + str(mins).zfill(2)
-
-#################################################
-#        Displaying and calculations      #
-#################################################
-
-def printTime(input, milTime = False):
-  # moved outside of meeting as we need for single user availability
-  midDay = ""
-  hours = int(input) / 60
-  if not milTime:
-    midDay = "AM"
-    if hours == 00:
-      hours = 12
-    elif hours >= 12:
-      if hours >= 13:
-        hours = hours - 12
-      midDay = "PM"
-  mins = int(input) % 60
-  time = "%02d:%02d " % (hours, mins) + midDay
-  return time
-
-def getTotalMinutes(hours, mins):
-  return int(hours) * 60 + int(mins)
-
-def fixDate(input):
-  input = input.split('/')
-  month = input[0].zfill(2)
-  day = input[1].zfill(2)
-  year = str(int(input[2]) + 2000)
-  return month + '/' + day + '/' + year
-
-def fixTime(input):
-  input = input.zfill(4)
-  return input[0:2] + ':' + input[2:4]
-
-def setDateTime(date, hour):
-  return date + ' ' + hour
-
-def parseDays(input):
-  days = {'S': 0,
-      'M': 1,
-      'T': 2,
-      'W': 3,
-      'R': 4,
-      'F': 5,
-      'A': 6}
-  temp = ''
-  for day in input:
-    temp = temp + str(days[day])
-
-  return temp
-
-def addSQLBlocks(user, onid):
-  host = 'localhost'
-  username = 'root'
-  passwd = ''
-  database = 'Scheduling'
-
-  try:
-    db = MySQLdb.connect(host=host,user=username,passwd=passwd,db=database)
-    sql = db.cursor()
-    query = 'SELECT scheduled_days, scheduled_start_time, scheduled_end_time, scheduled_start_date, scheduled_end_date FROM class AS cls INNER JOIN instructor AS ins ON ins.id = cls.instructor WHERE ins.username = "' + onid + '"'
-    sql.execute(query)
-    for row in sql.fetchall():
-      classDays = parseDays(row[0])
-      classStart = fixTime(row[1])
-      classEnd = fixTime(row[2])
-      start = fixDate(row[3])
-      end = fixDate(row[4])
-      start = setDateTime(start, classStart)
-      end = setDateTime(end, classEnd)
-      user.addClassTimeBlock(classDays, classStart, classEnd, start, end)
-  except:
-    return False
-
 JINJA_ENVIRONMENT = jinja2.Environment(
     loader=jinja2.FileSystemLoader(os.path.dirname(__file__)),
     autoescape=True,
     extensions=['jinja2.ext.autoescape'])
-
 # CLIENT_SECRETS, name of a file containing the OAuth 2.0 information for this
 # application, including client_id and client_secret, which are found
 # on the API Access tab on the Google APIs
@@ -739,8 +740,6 @@ MAIN_HEADER = """
   <br><br>
 """
 
-
-
 MAIN_END = """
   </div></div></body>
 </html>
@@ -752,13 +751,11 @@ SEARCH_USER = """
   <div data-role="content" class="ui-content" role="main">
   <div class="center-wrapper">
   <br>
-    <form action='/queryuser' method='post' data-ajax='false'>
+    <form action='/queryuser' data-ajax='false'>
     <table cellpadding=10 cellspacing=10 border=0>
     <tr><td valign=top>
     <label for='onid'>ONID username:</label> <br> To enter more than one username, please enter each onid username followed by a semi colon<br><br>
-    <textarea name="onid" cols="40" rows="4">
-Type onid usernames here...
-    </textarea>
+    <textarea name="onid" cols="40" rows="4" placeholder='Type onid usernames here...'></textarea>
     </td><tr>
     <tr>
     <td valign=top>
@@ -777,8 +774,8 @@ Type onid usernames here...
     <tr><td valign=top> 
     <label for='time1'>Start time:</label> Hour 
     <select name="hour1">
-    <option value="8" selected>8 AM</option>
-    <option value="9">9 AM</option>
+    <option value="08" selected>8 AM</option>
+    <option value="09">9 AM</option>
     <option value="10">10 AM</option>
     <option value="11">11 AM</option>
     <option value="12">12 PM</option>
@@ -800,8 +797,8 @@ Type onid usernames here...
     <td valign=top> 
     <label for='time2'>End time:</label> Hour 
     <select name="hour2">
-    <option value="8" selected>8 AM</option>
-    <option value="9">9 AM</option>
+    <option value="08" selected>8 AM</option>
+    <option value="09">9 AM</option>
     <option value="10">10 AM</option>
     <option value="11">11 AM</option>
     <option value="12">12 PM</option>
@@ -826,13 +823,12 @@ Type onid usernames here...
   </div>
 """
 
-
 SEARCH_TIME = """
 
   <div data-role="content" class="ui-content" role="main">
   <div class="center-wrapper">
   <br>
-    <form action='/querytime' method='post' data-ajax='false'>
+    <form action='/querytime' data-ajax='false'>
     <table cellpadding=10 cellspacing=10 border=0>
     <tr><td valign=top colspan=2>
     <label for='onid'>ONID username:</label> <br> To enter more than one username, please enter each onid username followed by a semi colon<br><br>
@@ -944,7 +940,7 @@ SEARCH_SCHEDULE = """
   <div data-role="content" class="ui-content" role="main">
   <div class="center-wrapper">
   <br>
-    <form action='/queryschedule' method='post' data-ajax='false'>
+    <form action='/queryschedule' data-ajax='false'>
     <table cellpadding=10 cellspacing=10 border=0>
     <tr><td valign=top>
     <label for='onid'>ONID username:</label> 
@@ -1006,7 +1002,6 @@ SEARCH_SCHEDULE = """
   </div>
 """
 
-
 class MainHandler(webapp2.RequestHandler):
     def get(self):
       self.response.write(MAIN_HEADER % 'OSU Scheduling Tool-search by users')
@@ -1014,6 +1009,17 @@ class MainHandler(webapp2.RequestHandler):
       self.response.write(SEARCH_USER)
       self.response.write("<br><br>")
       self.response.write(MAIN_END)
+
+# class MainHandler(webapp2.RequestHandler):
+
+#   @decorator.oauth_aware
+#   def get(self):
+#     variables = {
+#         'url': decorator.authorize_url(),
+#         'has_credentials': decorator.has_credentials()
+#         }
+#     template = JINJA_ENVIRONMENT.get_template('main.html')
+#     self.response.write(template.render(variables))
 
 
 class searchTime(webapp2.RequestHandler):
@@ -1038,33 +1044,15 @@ class searchSchedule(webapp2.RequestHandler):
     self.response.write("<br><br>")
     self.response.write(MAIN_END)
 
-
 class filterQuery(webapp2.RequestHandler):
-  def post(self):
-    global service
-    users = self.request.get('onid').split(';')
-    date = cgi.escape(self.request.get('SearchDate'))
-    startTime = cgi.escape(self.request.get('StartTime'))
-    endTime = cgi.escape(self.request.get('Endtime'))
-    self.response.write(cgi.escape(date))
-    self.response.write(cgi.escape(startTime))
-    self.response.write(cgi.escape(endTime))
-    onidusers = []
-    for userName in users:
-      oniduser.append(user + "@onid.oregonstate.edu", length, service)
-      addSQLBlocks(oniduser, userName)      
-      self.response.write(cgi.escape(userName) + "<br>")
-
-    newMeeting = meeting(startTime, endTime, length, onidusers)
-
-    self.response.write(MAIN_HEADER % 'Query Results')
-    self.response.write("""
-      <h1>Search by Time</h1>
-    <div data-role="content" class="ui-content" role="main">
-    <div class="center-wrapper">""")
-    self.response.write("<br><h2>Results</h2><br>")
-    #self.response.write(cgi.escape(self.request.get('onid')))
-
+  @decorator.oauth_aware
+  def get(self):
+    self.response.write(MAIN_HEADER % "Results")
+    # username = self.request.get('onid') + "@onid.oregonstate.edu"
+    test = person('burrowsd@onid.oregonstate.com', 60, service)
+    test.findAvailability("06/09/2014 08:00", "06/09/2014 12:00")
+    for x in test.availabilities['times']:
+      self.response.write(printTime(x) + "<br>")
     self.response.write(MAIN_END)
 
 class queryTime(webapp2.RequestHandler):
@@ -1077,7 +1065,6 @@ class querySchedule(webapp2.RequestHandler):
 
 app = webapp2.WSGIApplication([
     ('/', MainHandler),
-    #('/query', filterQuery),
     ('/time', searchTime),
     ('/schedule', searchSchedule),
     ('/queryuser', filterQuery),

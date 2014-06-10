@@ -1,5 +1,5 @@
 application: iron-stack-575
-version: 2
+version: 3
 runtime: python27
 threadsafe: true
 api_version: 1
@@ -13,4 +13,3 @@ libraries:
   version: "latest"
 - name: webapp2
   version: "latest"
-  
