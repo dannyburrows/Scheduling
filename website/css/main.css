@@ -1,0 +1,30 @@
+.row {
+	background-color: #262626;
+	border-radius: 8px;
+	padding: 5px 5px 5px 5px;
+	color: #E6E6E6;
+	font-size: 24pt;
+	text-align: center;
+	text-decoration: none;
+}
+
+.row:hover {
+	background-color: #3C3C3C;
+}
+
+a {
+	text-decoration: none;
+}
+
+img {
+	display: block;
+	width: 50%;
+	height: 50%;
+	margin-left: auto;
+	margin-right: auto;
+}
+
+.red {
+	padding: 10px;
+	color: red;
+}

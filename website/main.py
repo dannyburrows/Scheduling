@@ -699,10 +699,11 @@ MAIN_HEADER = """
     <link href="http://fonts.googleapis.com/css?family=Gudea" rel="stylesheet" type="text/css">
       <link href="http://oregonstate.edu/css/bootstrap.min.css" rel="stylesheet">
       <link href="http://oregonstate.edu/css/style.css?v=1" rel="stylesheet">
+      <script src="js/jquery.js"></script>
     <title>%s</title>
   </head>
 
-  <body class='ui-mobile-viewport ui-overlay-c'>
+  <body>
 
   <nav id="tophat" class="col-xs-12 hidden-xs">
     <div class="container">
@@ -742,7 +743,6 @@ MAIN_END = """
 </html>
 """
 
-
 SEARCH_USER = """
   <div data-role="content" class="ui-content" role="main">
   <div class="center-wrapper">
@@ -759,12 +759,20 @@ SEARCH_USER = """
     <input type='date' name='SearchDate' id='SearchDate' placeholder='YYYY/MM/DD'></td></tr>
     <tr>
     <td valign=top>
-    <label for='length'>Meeting Length:</label> 
+    <label for='length'>Meeting Length (mins): </label> 
     <select name="length">
     <option value="15" selected>15</option>
     <option value="30">30</option>
     <option value="45">45</option>
     <option value="60">60</option>
+    <option value="75">75</option>
+    <option value="90">90</option>
+    <option value="105">105</option>
+    <option value="120">120</option>
+    <option value="135">135</option>
+    <option value="150">150</option>
+    <option value="165">165</option>
+    <option value="180">180</option>
     </select>
     </td></tr>
     <tr><td valign=top> 
@@ -823,7 +831,7 @@ SEARCH_TIME = """
   <div data-role="content" class="ui-content" role="main">
   <div class="center-wrapper">
   <br>
-    <form action='/querytime' data-ajax='false'>
+    <form action='/queryTime' data-ajax='false'>
     <table cellpadding=10 cellspacing=10 border=0>
     <tr><td valign=top colspan=2>
     <label for='onid'>ONID username:</label> <br> To enter more than one username, please enter each onid username followed by a semi colon<br><br>
@@ -831,13 +839,13 @@ SEARCH_TIME = """
     </td></tr>
     <tr>
     <td valign=top>
-    <label for='date1'>Date:</label> 
-    <input type='date' name='SearchDate1' id='SearchDate1'>     </td>
+    <label for='date'>Date:</label> 
+    <input type='date' name='SearchDate' id='SearchDate' placeholder='YYYY/MM/DD'></td>
     <td valign=top>
     <label for='time1'>Start time:</label> Hour 
     <select name="hour1">
-    <option value="8" selected>8 AM</option>
-    <option value="9">9 AM</option>
+    <option value="08" selected>8 AM</option>
+    <option value="09">9 AM</option>
     <option value="10">10 AM</option>
     <option value="11">11 AM</option>
     <option value="12">12 PM</option>
@@ -858,68 +866,21 @@ SEARCH_TIME = """
     </td>
     </tr>
     <tr>
-    <td valign=top>
-    <label for='date2'>Date:</label> 
-    <input type='date' name='SearchDate2' id='SearchDate2'>     </td>
-    <td valign=top>
-    <label for='time2'>Start time:</label> Hour 
-    <select name="hour2">
-    <option value="8" selected>8 AM</option>
-    <option value="9">9 AM</option>
-    <option value="10">10 AM</option>
-    <option value="11">11 AM</option>
-    <option value="12">12 PM</option>
-    <option value="13">1 PM</option>
-    <option value="14">2 PM</option>
-    <option value="15">3 PM</option>
-    <option value="16">4 PM</option>
-    <option value="17">5 PM</option>
-    <option value="18">6 PM</option>
-    </select>
-    Minutes: <select name="min2">
-    <option value="00" selected>00</option>
-    <option value="15">15</option>
-    <option value="30">30</option>
-    <option value="45">45</option>
-    </select>
-
-    </td>
-    </tr>
-    <tr>
-    <td valign=top>
-    <label for='date3'>Date:</label> 
-    <input type='date' name='SearchDate3' id='SearchDate3'>     </td>
-    <td valign=top>
-    <label for='time3'>Start time:</label> Hour 
-    <select name="hour3">
-    <option value="8" selected>8 AM</option>
-    <option value="9">9 AM</option>
-    <option value="10">10 AM</option>
-    <option value="11">11 AM</option>
-    <option value="12">12 PM</option>
-    <option value="13">1 PM</option>
-    <option value="14">2 PM</option>
-    <option value="15">3 PM</option>
-    <option value="16">4 PM</option>
-    <option value="17">5 PM</option>
-    <option value="18">6 PM</option>
-    </select>
-    Minutes: <select name="min3">
-    <option value="00" selected>00</option>
-    <option value="15">15</option>
-    <option value="30">30</option>
-    <option value="45">45</option>
-    </select>
-    </td>
-    </tr>
-    <tr>
     <td valign=top colspan=2>
-    <label for='length'>Meeting Length:</label> 
+    <label for='length'>Meeting Length (mins):</label> 
     <select name="length">
     <option value="15" selected>15</option>
     <option value="30">30</option>
     <option value="45">45</option>
     <option value="60">60</option>
+    <option value="75">75</option>
+    <option value="90">90</option>
+    <option value="105">105</option>
+    <option value="120">120</option>
+    <option value="135">135</option>
+    <option value="150">150</option>
+    <option value="165">165</option>
+    <option value="180">180</option>
     </select>
     </td></tr>
     </table>
@@ -929,11 +890,10 @@ SEARCH_TIME = """
 """
 
 SEARCH_SCHEDULE = """
-
   <div data-role="content" class="ui-content" role="main">
   <div class="center-wrapper">
   <br>
-    <form action='/queryschedule' data-ajax='false'>
+    <form action='/querySchedule' data-ajax='false'>
     <table cellpadding=10 cellspacing=10 border=0>
     <tr><td valign=top>
     <label for='onid'>ONID username:</label> 
@@ -942,12 +902,12 @@ SEARCH_SCHEDULE = """
     <tr>
     <td valign=top>
     <label for='date'>Start Date:</label> 
-    <input type='date' name='SearchDate' id='SearchDate'></td></tr>
+    <input type='date' name='SearchDate' id='SearchDate' placeholder='YYYY/MM/DD'></td></tr>
     <tr><td valign=top> 
     <label for='time1'>Start time:</label> Hour 
-    <select name="hour1">
-    <option value="8" selected>8 AM</option>
-    <option value="9">9 AM</option>
+    <select name="hour1" id="hour1">
+    <option value="08" selected>8 AM</option>
+    <option value="09">9 AM</option>
     <option value="10">10 AM</option>
     <option value="11">11 AM</option>
     <option value="12">12 PM</option>
@@ -958,7 +918,7 @@ SEARCH_SCHEDULE = """
     <option value="17">5 PM</option>
     <option value="18">6 PM</option>
     </select>
-    Minutes: <select name="min1">
+    Minutes: <select name="min1" id="min1">
     <option value="00" selected>00</option>
     <option value="15">15</option>
     <option value="30">30</option>
@@ -968,9 +928,9 @@ SEARCH_SCHEDULE = """
     <tr>
     <td valign=top> 
     <label for='time2'>End time:</label> Hour 
-    <select name="hour2">
-    <option value="8" selected>8 AM</option>
-    <option value="9">9 AM</option>
+    <select name="hour2" id="hour2">
+    <option value="08">8 AM</option>
+    <option value="09">9 AM</option>
     <option value="10">10 AM</option>
     <option value="11">11 AM</option>
     <option value="12">12 PM</option>
@@ -979,9 +939,9 @@ SEARCH_SCHEDULE = """
     <option value="15">3 PM</option>
     <option value="16">4 PM</option>
     <option value="17">5 PM</option>
-    <option value="18">6 PM</option>
+    <option value="18" selected>6 PM</option>
     </select>
-    Minutes: <select name="min2">
+    Minutes: <select name="min2" id="min2">
     <option value="00" selected>00</option>
     <option value="15">15</option>
     <option value="30">30</option>
@@ -989,13 +949,31 @@ SEARCH_SCHEDULE = """
     </select>
     </td></tr>
     </table>
-    Check next 7 days availabilty<br><br>
+    <input type='checkbox' id='saneDefault' name='saneDefault'>Check next 7 days availabilty<br><br>
     <input type='submit' value='Query'>
     </form> 
+  <script>
+  /* JS for hiding stuff on checkbox check */
+  $('#saneDefault').change(function () {
+    if ($(this).is(':checked')) {
+      $('#SearchDate').prop('disabled', true);
+      $('#hour1').prop('disabled', true);
+      $('#min1').prop('disabled', true);
+      $('#hour2').prop('disabled', true);
+      $('#min2').prop('disabled', true);
+    } else {
+      $('#SearchDate').prop('disabled', false);
+      $('#hour1').prop('disabled', false);
+      $('#min1').prop('disabled', false);
+      $('#hour2').prop('disabled', false);
+      $('#min2').prop('disabled', false);
+    }
+  })
+  </script>
   </div>
 """
 
-class MainHandler(webapp2.RequestHandler):
+class searchUsers(webapp2.RequestHandler):
     def get(self):
       self.response.write(MAIN_HEADER % 'OSU Scheduling Tool-search by users')
       self.response.write("<h1>Search by Users</h1>")
@@ -1025,7 +1003,7 @@ class searchSchedule(webapp2.RequestHandler):
     self.response.write("<br><br>")
     self.response.write(MAIN_END)
 
-class filterQuery(webapp2.RequestHandler):
+class queryUser(webapp2.RequestHandler):
   def get(self):
     self.response.write(MAIN_HEADER % "Results")
     users = self.request.get('onid').split(';')
@@ -1045,14 +1023,19 @@ class filterQuery(webapp2.RequestHandler):
     # all data structures prepped, query for meeting
     newMeeting = meeting(start, end, length, onidusers) # available times will be held in newMeeting.
     # times were successfully found
-    self.response.write("<div class='row'><div class='col-md-2'><strong>Available Users</strong></div><div class='col-md-2'> </div>") # extra two columns for spacing
-    self.response.write("<div class='col-md-2'><strong>Available Time Slots</strong></div></div>")
+    self.response.write("<div class='row'><div class='col-md-8' style='text-align:center'><h3><strong>Meeting Info</strong></h3></div></div>")
+    self.response.write("<br><div class='row'><div class='col-md-2'><strong>Date: </strong>%s</div>" % rawDate)
+    self.response.write("<div class='col-md-2'><strong>Start Time: </strong>%s</div>" % startTime)
+    self.response.write("<div class='col-md-2'><strong>End Time: </strong>%s</div>" % endTime)
+    self.response.write("<div class='col-md-2'><strong>Length: </strong>%s</div></div>" % str(length))
+    self.response.write("<br><div class='row'><div class='col-md-3'><strong>Users</strong></div>")
+    self.response.write("<div class='col-md-3'><strong>Available Times</strong></div></div>")
     if newMeeting.availInTimeSlot():
       # output the data
-      self.response.write("<div class='row'><div class='col-md-2'>")
+      self.response.write("<div class='row'><div class='col-md-3'>")
       for user in onidusers:
         self.response.write(user.userName + "<br>")
-      self.response.write("</div><div class='col-md-2'> </div><div class='col-md-2'>")
+      self.response.write("</div><div class='col-md-3'>")
       for timeslot in newMeeting.availableTimes:
         self.response.write(printTime(timeslot) + " - " + printTime(timeslot+length) + "<br>")
       self.response.write("</div></div>")
@@ -1060,17 +1043,80 @@ class filterQuery(webapp2.RequestHandler):
 
 class queryTime(webapp2.RequestHandler):
   def get(self):
-    pass
+    self.response.write(MAIN_HEADER % "Results")
+    users = self.request.get('onid').split(';')
+    length = int(self.request.get('length'))
+    rawTime = self.request.get('hour1') + ":" + self.request.get('min1')
+    startTime = rawTime
+    endTime = convertTimeToString(getTotalMinutes(rawTime[0:2], rawTime[3:5]) + length)
+    rawDate = self.request.get('SearchDate').replace('-', '/')
+    startDate = rawDate[5:] + '/' + rawDate[:4]
+    start = startDate + " " + startTime
+    end = startDate + " " + endTime
+    onidusers = [] # array for person objects
+    # add google calendar blocks and SQL blocks
+    for user in users:
+      temp = person(user+'@onid.oregonstate.edu', length, service)
+      addSQLBlocks(temp, user) # temp is the person object, user is the onid name
+      onidusers.append(temp)
+    # all data structures prepped, query for meeting
+    newMeeting = meeting(start, end, length, onidusers) # available times will be held in newMeeting.
+    # times were successfully found
+    self.response.write("<div class='row'><div class='col-md-6' style='text-align:center'><h3><strong>Meeting Info</strong></h3></div></div>")
+    self.response.write("<br><div class='row'><div class='col-md-2'><strong>Date: </strong>%s</div>" % rawDate)
+    self.response.write("<div class='col-md-2'><strong>Start Time: </strong>%s</div>" % startTime)
+    self.response.write("<div class='col-md-2'><strong>Length: </strong>%s</div></div>" % str(length))
+    self.response.write("<br><div class='row'><div class='col-md-6'><strong>Available Users</strong></div></div>")
+    if newMeeting.availInTimeSlot():
+      # output the data
+      self.response.write("<div class='row'><div class='col-md-6'>")
+      # self.response.write("</div><div class='col-md-2'> </div><div class='col-md-2'>")
+      for user in newMeeting.availUsers:
+        self.response.write(user + "<br>")
+      self.response.write("</div></div>")
+    self.response.write(MAIN_END)
 
 class querySchedule(webapp2.RequestHandler):
   def get(self):
-    pass
+    self.response.write(MAIN_HEADER % "Results")
+    getUser = self.request.get('onid')
+    user = person(getUser  + "@onid.oregonstate.edu", 15, service)
+    addSQLBlocks(user, getUser)
+    saneDefault = self.request.get('saneDefault')
+    if saneDefault:
+      # handle the checked box
+      newWindow = window(user)
+      self.response.write("<div class='row'><div class='col-md-6' style='text-align:center'><h3><strong>%s's Schedule</strong></h3></div></div>" % getUser)
+      self.response.write("<br><div class='row'><div class='col-md-2'><strong>Next 7 days</strong></div>")
+      self.response.write("<div class='col-md-2'><strong>Start Time: </strong>08:00</div>")
+      self.response.write("<div class='col-md-2'><strong>End Time: </strong>16:00</div></div>")
+    else:
+      startTime = self.request.get('hour1') + ":" + self.request.get('min1')
+      endTime = self.request.get('hour2') + ":" + self.request.get('min2')
+      rawDate = self.request.get('SearchDate').replace('-', '/')
+      startDate = rawDate[5:] + '/' + rawDate[:4]
+      start = startDate + " " + startTime
+      end = startDate + " " + endTime
+      newWindow = window(user, start, end)
+      self.response.write("<div class='row'><div class='col-md-6' style='text-align:center'><h3><strong>%s's Available Times</strong></h3></div></div>" % getUser)
+      self.response.write("<br><div class='row'><div class='col-md-2'><strong>Date: </strong>%s</div>" % rawDate)
+      self.response.write("<div class='col-md-2'><strong>Start Time: </strong>%s</div>" % startTime)
+      self.response.write("<div class='col-md-2'><strong>End Time: </strong>%s</div></div>" % endTime)
+
+    self.response.write("<br><br><div class='row'>")
+    for slots in newWindow.availableDates:
+      self.response.write("<div class='col-md-1'><strong>%s</strong><br>" % slots['date'])
+      for times in slots['times']:
+        self.response.write(printTime(times) + "<br>")
+      self.response.write("</div>")
+    self.response.write("</div>")
+    self.response.write(MAIN_END)
 
 app = webapp2.WSGIApplication([
-    ('/', MainHandler),
+    ('/', searchUsers),
     ('/time', searchTime),
     ('/schedule', searchSchedule),
-    ('/queryuser', filterQuery),
+    ('/queryuser', queryUser),
     ('/queryTime', queryTime),
     ('/querySchedule', querySchedule),
     (decorator.callback_path, decorator.callback_handler()),

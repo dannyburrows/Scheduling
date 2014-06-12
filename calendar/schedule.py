@@ -691,23 +691,23 @@ class whoToExpect:
 				passwd = ''
 				database = 'Scheduling'
 
-				# try:
-				# 	db = MySQLdb.connect(host=host,user=username,passwd=passwd,db=database)
-				# except:
-				# 	self.gui.addNotification(self.warningY, self.warningX, "Issue connecting to the MySQL server. Check the connection.")
-				# 	return False
-				# sql = db.cursor()
-				# query = 'SELECT scheduled_days, scheduled_start_time, scheduled_end_time, scheduled_start_date, scheduled_end_date FROM class AS cls INNER JOIN instructor AS ins ON ins.id = cls.instructor WHERE ins.username = "' + user + '"'
-				# sql.execute(query)
-				# for row in sql.fetchall():
-				# 	classDays = parseDays(row[0])
-				# 	classStart = fixTime(row[1])
-				# 	classEnd = fixTime(row[2])
-				# 	start = fixDate(row[3])
-				# 	end = fixDate(row[4])
-				# 	start = setDateTime(start, classStart)
-				# 	end = setDateTime(end, classEnd)
-				# 	temp.addClassTimeBlock(classDays, classStart, classEnd, start, end)
+				try:
+					db = MySQLdb.connect(host=host,user=username,passwd=passwd,db=database)
+				except:
+					self.gui.addNotification(self.warningY, self.warningX, "Issue connecting to the MySQL server. Check the connection.")
+					return False
+				sql = db.cursor()
+				query = 'SELECT scheduled_days, scheduled_start_time, scheduled_end_time, scheduled_start_date, scheduled_end_date FROM class AS cls INNER JOIN instructor AS ins ON ins.id = cls.instructor WHERE ins.username = "' + user + '"'
+				sql.execute(query)
+				for row in sql.fetchall():
+					classDays = parseDays(row[0])
+					classStart = fixTime(row[1])
+					classEnd = fixTime(row[2])
+					start = fixDate(row[3])
+					end = fixDate(row[4])
+					start = setDateTime(start, classStart)
+					end = setDateTime(end, classEnd)
+					temp.addClassTimeBlock(classDays, classStart, classEnd, start, end)
 
 				if temp.errorFlag:
 					self.gui.addNotification(self.warningY, self.warningX, temp.errorMsg)
@@ -1167,14 +1167,10 @@ class mainGui:
 		self.locations.append({'win': 'meeting', 'x': 8, 'y': 16})
 
 	def buildWindows(self):
-		# maxY, maxX = self.gui.screen.getmaxyx()
-		# self.gui.close()
-		# print maxY, maxX
-		# exit()
 		self._setLocations()
-		self.gui.addUIElement('button', 'spec', self.tab, self.locations, text='Schedule multiple users/multiple times')
-		self.gui.addUIElement('button', 'users', self.tab, self.locations, text='Find available users, specific time')
-		self.gui.addUIElement('button', 'meeting', self.tab, self.locations, text='View user\'s schedule')
+		self.gui.addUIElement('button', 'spec', self.tab, self.locations, text='Search by available times')
+		self.gui.addUIElement('button', 'users', self.tab, self.locations, text='Search by users')
+		self.gui.addUIElement('button', 'meeting', self.tab, self.locations, text='View schedule')
 
 	def mainLoop(self):	
 		keyMaps = {ord('x'): 'self.gui.close()\nexit()',
@@ -1238,31 +1234,5 @@ if __name__ == "__main__":
 	hours = [str(x).zfill(2) for x in range(0,24)]
 	mins = [str(x).zfill(2) for x in range(0,60,15)]
 	lengths = [str(x) for x in range(15,375,15)]
-	
-	# selected = []
-	# domains =['@gmail.com', '@onid.oregonstate.edu', '@eecs.oregonstate.edu']
-	# users = ['burrows.danny@gmail.com', 'jonesjo@onid.oregonstate.edu', 'clampitl@onid.oregonstate.edu', 'jjames83@gmail.com']
-	#users = [ x for x in range(0,50)]
-	# test = GUI()
-	# x = button(test.screen, 3, 3, "TESTING",0)
-	# x.display(x, True, True)
-	# y = listWindow(test.screen, 20, 20, 8, 3, days, 1)
-	# y.display(y)
-	# #test.windows.append(button(test.screen, 3, 3, "TESTING",0))
-	# testDates = []
-	# # testDates.append({'start': 1, 'stop': 2, 'length': 3})
-	# # testDates.append({'start': 1, 'stop': 2, 'length': 3})
-	# # testDates.append({'start': 1, 'stop': 2, 'length': 3})
-	# testDates.append({ 'date': '04/26/2014', 'times':['12:00','12:30','1:00','1:30']})
-	# testDates.append({ 'date': '04/27/2014', 'times':['1:00','2:30','4:00','5:30']})
-	# z = pagedWindow(test.screen, 20, 20, 8, 40, testDates, 2)
-	# z.display = displayPagedWindow
-	# z.display(z)
-	# #button(screen)
-
-	# test.redrawGUI(0)
-	# test.close()
-	# exit()
-	#GUIscreen = curses.initscr()
 	
 	mainGui().mainLoop()
