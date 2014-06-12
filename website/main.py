@@ -9,10 +9,9 @@ from oauth2client import appengine
 from oauth2client import client
 from google.appengine.api import memcache
 from datetime import *
-
 import webapp2
 import jinja2
-import cgi
+
 #####################################################################
 # Authors: Group 2 - Danny Burrows, Jonathan Jones, Laura Clampitt  #
 # Oregon State University                                           #
@@ -459,7 +458,6 @@ class person:
     """
       Creates an array of blocked times by looping through the calendar object
     """
-    print "***CALLED***"
     # loop through calendar for this specific user and add blocked times as they are pulled from api
     try:
       page_token = None
@@ -467,13 +465,12 @@ class person:
       while True:
         # pull the object, correcting timezone to central
         try:
-          events = service.events().list(calendarId=self.userName , pageToken=page_token, timeZone='-5:00').execute()
-          print len(events)
+          # attempt to connect to Calendar API
+          events = self.service.events().list(calendarId=self.userName , pageToken=page_token, timeZone='-5:00').execute()
         except:
-          # cannot find the user for whatever reason
-          return False
+          # an error occurred connecting
+          return False # TODO
         for event in events['items']:
-
           try: # there is a switch from an older calendar type using dateTime in the JSON to date in the JSON, a meek attempt at correcting
             eventStart = event['start']['dateTime']
             eventEnd = event['end']['dateTime']
@@ -747,7 +744,6 @@ MAIN_END = """
 
 
 SEARCH_USER = """
-
   <div data-role="content" class="ui-content" role="main">
   <div class="center-wrapper">
   <br>
@@ -760,7 +756,7 @@ SEARCH_USER = """
     <tr>
     <td valign=top>
     <label for='date'>Start Date:</label> 
-    <input type='date' name='SearchDate' id='SearchDate'></td></tr>
+    <input type='date' name='SearchDate' id='SearchDate' placeholder='YYYY/MM/DD'></td></tr>
     <tr>
     <td valign=top>
     <label for='length'>Meeting Length:</label> 
@@ -797,7 +793,7 @@ SEARCH_USER = """
     <td valign=top> 
     <label for='time2'>End time:</label> Hour 
     <select name="hour2">
-    <option value="08" selected>8 AM</option>
+    <option value="08">8 AM</option>
     <option value="09">9 AM</option>
     <option value="10">10 AM</option>
     <option value="11">11 AM</option>
@@ -807,7 +803,7 @@ SEARCH_USER = """
     <option value="15">3 PM</option>
     <option value="16">4 PM</option>
     <option value="17">5 PM</option>
-    <option value="18">6 PM</option>
+    <option value="18" selected>6 PM</option>
     </select>
     Minutes: <select name="min2">
     <option value="00" selected>00</option>
@@ -824,7 +820,6 @@ SEARCH_USER = """
 """
 
 SEARCH_TIME = """
-
   <div data-role="content" class="ui-content" role="main">
   <div class="center-wrapper">
   <br>
@@ -832,9 +827,7 @@ SEARCH_TIME = """
     <table cellpadding=10 cellspacing=10 border=0>
     <tr><td valign=top colspan=2>
     <label for='onid'>ONID username:</label> <br> To enter more than one username, please enter each onid username followed by a semi colon<br><br>
-    <textarea name="onid" cols="40" rows="3">
-Type onid usernames here...
-    </textarea>
+    <textarea name="onid" cols="40" rows="3" placeholder="Type onid usernames here..."></textarea>
     </td></tr>
     <tr>
     <td valign=top>
@@ -923,10 +916,10 @@ Type onid usernames here...
     <td valign=top colspan=2>
     <label for='length'>Meeting Length:</label> 
     <select name="length">
-    <option value="00" selected>00</option>
-    <option value="15">15</option>
+    <option value="15" selected>15</option>
     <option value="30">30</option>
     <option value="45">45</option>
+    <option value="60">60</option>
     </select>
     </td></tr>
     </table>
@@ -974,8 +967,8 @@ SEARCH_SCHEDULE = """
     </td></tr>
     <tr>
     <td valign=top> 
-    <label for='time1'>End time:</label> Hour 
-    <select name="hour1">
+    <label for='time2'>End time:</label> Hour 
+    <select name="hour2">
     <option value="8" selected>8 AM</option>
     <option value="9">9 AM</option>
     <option value="10">10 AM</option>
@@ -988,7 +981,7 @@ SEARCH_SCHEDULE = """
     <option value="17">5 PM</option>
     <option value="18">6 PM</option>
     </select>
-    Minutes: <select name="min1">
+    Minutes: <select name="min2">
     <option value="00" selected>00</option>
     <option value="15">15</option>
     <option value="30">30</option>
@@ -1009,18 +1002,6 @@ class MainHandler(webapp2.RequestHandler):
       self.response.write(SEARCH_USER)
       self.response.write("<br><br>")
       self.response.write(MAIN_END)
-
-# class MainHandler(webapp2.RequestHandler):
-
-#   @decorator.oauth_aware
-#   def get(self):
-#     variables = {
-#         'url': decorator.authorize_url(),
-#         'has_credentials': decorator.has_credentials()
-#         }
-#     template = JINJA_ENVIRONMENT.get_template('main.html')
-#     self.response.write(template.render(variables))
-
 
 class searchTime(webapp2.RequestHandler):
   def get(self):
@@ -1045,14 +1026,36 @@ class searchSchedule(webapp2.RequestHandler):
     self.response.write(MAIN_END)
 
 class filterQuery(webapp2.RequestHandler):
-  @decorator.oauth_aware
   def get(self):
     self.response.write(MAIN_HEADER % "Results")
-    # username = self.request.get('onid') + "@onid.oregonstate.edu"
-    test = person('burrowsd@onid.oregonstate.com', 60, service)
-    test.findAvailability("06/09/2014 08:00", "06/09/2014 12:00")
-    for x in test.availabilities['times']:
-      self.response.write(printTime(x) + "<br>")
+    users = self.request.get('onid').split(';')
+    length = int(self.request.get('length'))
+    startTime = self.request.get('hour1') + ":" + self.request.get('min1')
+    endTime = self.request.get('hour2') + ":" + self.request.get('min2')
+    rawDate = self.request.get('SearchDate').replace('-', '/')
+    startDate = rawDate[5:] + '/' + rawDate[:4]
+    start = startDate + " " + startTime
+    end = startDate + " " + endTime
+    onidusers = [] # array for person objects
+    # add google calendar blocks and SQL blocks
+    for user in users:
+      temp = person(user+'@onid.oregonstate.edu', length, service)
+      addSQLBlocks(temp, user) # temp is the person object, user is the onid name
+      onidusers.append(temp)
+    # all data structures prepped, query for meeting
+    newMeeting = meeting(start, end, length, onidusers) # available times will be held in newMeeting.
+    # times were successfully found
+    self.response.write("<div class='row'><div class='col-md-2'><strong>Available Users</strong></div><div class='col-md-2'> </div>") # extra two columns for spacing
+    self.response.write("<div class='col-md-2'><strong>Available Time Slots</strong></div></div>")
+    if newMeeting.availInTimeSlot():
+      # output the data
+      self.response.write("<div class='row'><div class='col-md-2'>")
+      for user in onidusers:
+        self.response.write(user.userName + "<br>")
+      self.response.write("</div><div class='col-md-2'> </div><div class='col-md-2'>")
+      for timeslot in newMeeting.availableTimes:
+        self.response.write(printTime(timeslot) + " - " + printTime(timeslot+length) + "<br>")
+      self.response.write("</div></div>")
     self.response.write(MAIN_END)
 
 class queryTime(webapp2.RequestHandler):
@@ -1069,5 +1072,6 @@ app = webapp2.WSGIApplication([
     ('/schedule', searchSchedule),
     ('/queryuser', filterQuery),
     ('/queryTime', queryTime),
-    ('/querySchedule', querySchedule)
+    ('/querySchedule', querySchedule),
+    (decorator.callback_path, decorator.callback_handler()),
     ], debug=True)

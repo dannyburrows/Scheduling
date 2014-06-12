@@ -13,3 +13,6 @@ libraries:
   version: "latest"
 - name: webapp2
   version: "latest"
+- name: MySQLdb
+  version: "latest"
+  
