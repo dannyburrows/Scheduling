@@ -518,7 +518,7 @@ class window:
 
 def addSQLBlocks(user, onid):
   config = ConfigParser.RawConfigParser()
-  config.read('sql_config.ini')
+  config.read('sql_config_live.ini')
   host = config.get('SQL', 'host')
   username = config.get('SQL', 'user')
   passwd = config.get('SQL', 'pass')

@@ -1,4 +1,4 @@
 cron:
 - description: Quarterly database update
-	url: /schedulePull.py
-	schedule: every first monday of jan, april, july, oct 04:00
+  url: /schedulePull.py
+  schedule: first monday of jan, april, july, oct 04:00

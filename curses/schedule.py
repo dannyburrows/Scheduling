@@ -11,7 +11,6 @@
 
 from calendarAPI import *
 from curseswrapper import *
-import MySQLdb
 
 def _addDateTime(self):
 	"""

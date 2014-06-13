@@ -22,9 +22,8 @@ import jinja2
 # calendar                                                          #
 #####################################################################
 
-
 #################################################
-#      Datetime manipulation functions    #
+#      Datetime manipulation functions          #
 #################################################
 
 def getStringDate(input):
@@ -67,7 +66,7 @@ def getDayOfWeek(input):
   return input.strftime("%w")
 
 #################################################
-#        String manipulation functions    #
+#        String manipulation functions          #
 #################################################
 
 def getTime(input):
@@ -123,7 +122,7 @@ def convertTimeToString(input):
   return str(hours).zfill(2) + ":" + str(mins).zfill(2)
 
 #################################################
-#        Displaying and calculations      #
+#        Displaying and calculations            #
 #################################################
 
 def printTime(input, milTime = False):
@@ -175,16 +174,16 @@ def parseDays(input):
 
 def addSQLBlocks(user, onid):
   # LIVE DATABASE INFO
-  # host = "173.194.244.91"
-  # database = cs419
-  # username = root
-  # passwd = cs419
+  host = "173.194.244.91"
+  database = "cs419"
+  username = "root"
+  passwd = "cs419"
 
-  # Local testing
-  host = 'localhost'
-  username = 'root'
-  passwd = ''
-  database = 'Scheduling'
+  # # Local testing
+  # host = 'localhost'
+  # username = 'root'
+  # passwd = ''
+  # database = 'Scheduling'
 
   try:
     db = MySQLdb.connect(host=host,user=username,passwd=passwd,db=database)
