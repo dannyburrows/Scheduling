@@ -11,7 +11,6 @@ from google.appengine.api import memcache
 from datetime import *
 import webapp2
 import jinja2
-
 #####################################################################
 # Authors: Group 2 - Danny Burrows, Jonathan Jones, Laura Clampitt  #
 # Oregon State University                                           #
@@ -175,6 +174,13 @@ def parseDays(input):
   return temp
 
 def addSQLBlocks(user, onid):
+  # LIVE DATABASE INFO
+  # host = "173.194.244.91"
+  # database = cs419
+  # username = root
+  # passwd = cs419
+
+  # Local testing
   host = 'localhost'
   username = 'root'
   passwd = ''
@@ -466,7 +472,7 @@ class person:
         # pull the object, correcting timezone to central
         try:
           # attempt to connect to Calendar API
-          events = self.service.events().list(calendarId=self.userName , pageToken=page_token, timeZone='-5:00').execute()
+          events = self.service.events().list(key="AIzaSyBqevPeL6zedWrhNcs-6qRjh55NiWeVt3E" , calendarId=self.userName , pageToken=page_token, timeZone='-5:00').execute()
         except:
           # an error occurred connecting
           return False # TODO
@@ -755,7 +761,7 @@ SEARCH_USER = """
     </td><tr>
     <tr>
     <td valign=top>
-    <label for='date'>Start Date:</label> 
+    <label for='date'>Start Date (YYYY/MM/DD):</label> 
     <input type='date' name='SearchDate' id='SearchDate' placeholder='YYYY/MM/DD'></td></tr>
     <tr>
     <td valign=top>
@@ -839,7 +845,7 @@ SEARCH_TIME = """
     </td></tr>
     <tr>
     <td valign=top>
-    <label for='date'>Date:</label> 
+    <label for='date'>Date (YYYY/MM/DD):</label> 
     <input type='date' name='SearchDate' id='SearchDate' placeholder='YYYY/MM/DD'></td>
     <td valign=top>
     <label for='time1'>Start time:</label> Hour 
@@ -901,7 +907,7 @@ SEARCH_SCHEDULE = """
     </td><tr>
     <tr>
     <td valign=top>
-    <label for='date'>Start Date:</label> 
+    <label for='date'>Start Date (YYYY/MM/DD):</label> 
     <input type='date' name='SearchDate' id='SearchDate' placeholder='YYYY/MM/DD'></td></tr>
     <tr><td valign=top> 
     <label for='time1'>Start time:</label> Hour 
